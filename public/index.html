@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Regional Resource Consents</title>
+    <meta name="description" content="Map and search resource consents published by New Zealand regional councils, with expiry alerts and watchlists.">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231e293b'/%3E%3Cpath d='M16 6a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z' fill='%233b82f6'/%3E%3C/svg%3E">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
     <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
@@ -21,16 +23,9 @@
                 <i class="fas fa-search"></i>
                 <input type="text" id="globalSearch" placeholder="Search consents by ID, holder, address, purpose..." />
             </div>
+            <!-- Region pills are generated from data/manifest.json -->
             <div class="topbar-filter-group" id="regionFilter" aria-label="Region filter">
                 <span class="topbar-filter-label">Region</span>
-                <label class="region-pill"><input type="checkbox" value="BOPRC" checked /> <span>BOPRC</span></label>
-                <label class="region-pill"><input type="checkbox" value="HBDC" checked /> <span>HBDC</span></label>
-                <label class="region-pill"><input type="checkbox" value="NRC" checked /> <span>NRC</span></label>
-                <label class="region-pill"><input type="checkbox" value="HRC" checked /> <span>HRC</span></label>
-                <label class="region-pill"><input type="checkbox" value="WRC" checked /> <span>WRC</span></label>
-                <label class="region-pill"><input type="checkbox" value="TRC" checked /> <span>TRC</span></label>
-                <label class="region-pill"><input type="checkbox" value="GWRC" checked /> <span>GWRC</span></label>
-                <label class="region-pill"><input type="checkbox" value="GDC" checked /> <span>GDC</span></label>
             </div>
         </div>
         <div class="topbar-right">
@@ -179,6 +174,9 @@
                 <button id="viewSplit" class="view-btn active" title="Split View"><i class="fas fa-columns"></i> Split</button>
                 <button id="viewMap" class="view-btn" title="Map Only"><i class="fas fa-map"></i> Map</button>
                 <button id="viewTable" class="view-btn" title="Table Only"><i class="fas fa-table"></i> Table</button>
+                <button id="dataInfoBtn" class="data-info-btn" type="button" title="Data sources and update dates" aria-haspopup="dialog" aria-expanded="false" aria-controls="dataInfoPanel">
+                    <i class="fas fa-database"></i> <span id="dataUpdatedLabel">Data sources</span>
+                </button>
             </div>
             <!-- Map -->
             <div id="map-container">
@@ -225,6 +223,19 @@
         </div>
     </div>
 
+    <!-- Data sources -->
+    <div id="dataInfoPanel" class="data-info-panel hidden" role="dialog" aria-labelledby="dataInfoTitle">
+        <div class="data-info-header">
+            <h3 id="dataInfoTitle"><i class="fas fa-database"></i> Data sources</h3>
+            <button id="closeDataInfo" class="btn-icon" type="button" title="Close"><i class="fas fa-times"></i></button>
+        </div>
+        <p class="data-info-intro">Consents are downloaded from each council's public ArcGIS service and refreshed automatically each day. <strong>Updated</strong> shows when each council's data was last downloaded. Check with the council before relying on a record.</p>
+        <table class="data-info-table">
+            <thead><tr><th>Region</th><th>Council</th><th class="num">Consents</th><th>Updated</th></tr></thead>
+            <tbody id="dataInfoBody"></tbody>
+        </table>
+    </div>
+
     <!-- Folder Picker (floating) -->
     <div id="folderPicker" class="folder-picker hidden"></div>
 
@@ -241,7 +252,7 @@
     <!-- Loading overlay -->
     <div id="loadingOverlay">
         <div class="spinner"></div>
-        <p>Loading consent datasets...</p>
+        <p id="loadingMessage">Loading consent data&hellip;</p>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

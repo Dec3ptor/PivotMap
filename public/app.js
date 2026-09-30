@@ -1,4 +1,4 @@
-// === BOPRC Resource Consents App ===
+// === Regional Resource Consents App ===
 (function () {
     'use strict';
 
@@ -11,6 +11,8 @@
     let sortDir = 'asc';
     let selectedFeatureId = null;
     let activeWatchlistFolder = null; // null = show all, or folder id to filter
+    let REGION_OPTIONS = []; // IDs of the regions whose data loaded, in manifest order
+    let dataSources = [];    // manifest entries for every region, plus load results
 
     // --- Watchlist ---
     const WL_KEY = 'boprc_watchlist';
@@ -29,26 +31,21 @@
         '180': 'Within 6 months',
         '365': 'Within 12 months'
     };
-    const REGION_OPTIONS = ['BOPRC', 'HBDC', 'NRC', 'HRC', 'WRC', 'TRC', 'GWRC', 'GDC'];
     // Status words that mean "actively valid" across all regional councils:
     // BOPRC/HBDC/TRC use "Current"; GDC uses "Active" and "Granted"; GWRC uses "Active"
+    // (scripts/regions.mjs already maps Active/Granted to "Current" when building the data)
     const ACTIVE_STATUSES = new Set(['current', 'active', 'granted']);
 
-    // Normalise source-specific status words to a single canonical label where appropriate.
-    // Different councils use different words for the same concepts — map them here once so
-    // every downstream filter, badge, stat and CSV export sees consistent labels.
-    function canonicalizeStatus(raw) {
-        const s = (raw || '').trim();
-        switch (s.toLowerCase()) {
-            case 'active':   // GWRC, GDC → same concept as BOPRC "Current"
-            case 'granted':  // GDC → decision made, consent live
-                return 'Current';
-            case 'lapsed consent': // GDC full label → match surrendered family
-                return 'Lapsed';
-            default:
-                return s;
-        }
-    }
+    // Fields every consent has once loaded ('' when a region doesn't publish it).
+    // Keep in sync with COMMON_FIELDS in scripts/regions.mjs.
+    const COMMON_FIELDS = [
+        'ConsentID', 'ProjectNumber', 'Status', 'PrimaryConsentHolder', 'HolderDisplay',
+        'PrimaryConsentHolderAddress', 'LocalAuthority', 'SiteAddress', 'Purpose', 'Subtype',
+        'Category', 'WaterManagementZone', 'WaterManagementArea', 'ComplianceOfficer',
+        'GrantedDate', 'LodgedDate', 'ExpiryDate', 'StatusDate', 'CapID', 'FactorySupplyNumber',
+        'PublicDocumentsLink', 'DeemedPermitted', 'GlobalID'
+    ];
+    const DATA_DIR = 'data/';
     const CSV_EXPORT_FIELDS = [
         ['Region', 'Region'],
         ['Consent ID', 'ConsentID'],
@@ -141,6 +138,9 @@
             try {
                 const imported = JSON.parse(reader.result);
                 if (!imported.folders || !Array.isArray(imported.folders)) throw new Error('Invalid format');
+                const validFolder = f => f && typeof f.name === 'string' && Array.isArray(f.consents)
+                    && f.consents.every(c => typeof c === 'string');
+                if (!imported.folders.every(validFolder)) throw new Error('Invalid format');
                 // Merge: add new folders, merge consents into existing folders with same name
                 imported.folders.forEach(impFolder => {
                     const existing = watchlist.folders.find(f => f.name === impFolder.name);
@@ -163,6 +163,18 @@
     // --- DOM refs ---
     const $ = (sel) => document.querySelector(sel);
     const $$ = (sel) => document.querySelectorAll(sel);
+
+    // --- HTML safety ---
+    // Consent data comes from third-party council services and watchlists can be imported
+    // from files, so escape every value before putting it into HTML.
+    const HTML_ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+    function escapeHtml(value) {
+        return value == null ? '' : String(value).replace(/[&<>"']/g, ch => HTML_ESCAPES[ch]);
+    }
+    // Only let http(s) links from the data become clickable hrefs.
+    function safeUrl(url) {
+        return typeof url === 'string' && /^https?:\/\//i.test(url) ? url : '';
+    }
 
     // --- Map setup ---
     const map = L.map('map', { zoomControl: true, preferCanvas: true }).setView([-37.8, 176.5], 8);
@@ -223,11 +235,23 @@
     const markerMap = new Map();
 
     // --- Helpers ---
-    const NOW = new Date();
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    const TODAY = new Date();
+    TODAY.setHours(0, 0, 0, 0);
+
+    // Dates in the data are calendar dates ('YYYY-MM-DD'). Read them as local midnight so
+    // expiry maths counts whole days in the viewer's timezone (a consent expiring yesterday
+    // is expired first thing this morning, not at midday when UTC catches up).
+    function parseDate(value) {
+        if (!value) return null;
+        const m = typeof value === 'string' && value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+        const d = m ? new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])) : new Date(value);
+        return Number.isNaN(d.getTime()) ? null : d;
+    }
+
     function daysUntilExpiry(dateStr) {
-        if (!dateStr) return null;
-        const d = new Date(dateStr);
-        return Math.ceil((d - NOW) / (1000 * 60 * 60 * 24));
+        const d = parseDate(dateStr);
+        return d ? Math.round((d - TODAY) / DAY_MS) : null;
     }
 
     function isMissingOrExpiredExpiry(dateStr, days = daysUntilExpiry(dateStr)) {
@@ -306,14 +330,15 @@
         return '#3b82f6';
     }
 
+    // Returns HTML-safe text.
     function formatDate(dateStr) {
         if (!dateStr) return '—';
-        return new Date(dateStr).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
+        const d = parseDate(dateStr);
+        return d ? d.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' }) : escapeHtml(dateStr);
     }
 
     function formatShortDate(dateStr) {
-        if (!dateStr) return '';
-        return new Date(dateStr).toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' });
+        return dateStr ? formatDate(dateStr) : '';
     }
 
     function pluralize(count, singular, plural) {
@@ -335,363 +360,22 @@
         URL.revokeObjectURL(url);
     }
 
-    function getPointFeatures(geojson) {
-        if (!geojson || !Array.isArray(geojson.features)) return [];
-        return geojson.features.filter(f => {
-            if (!f || !f.geometry) return false;
-            if (f.geometry.type !== 'Point') return false;
-            const c = f.geometry.coordinates;
-            if (!Array.isArray(c) || c.length < 2) return false;
-            const lng = c[0], lat = c[1];
-            // Reject null, undefined, NaN, or out-of-range WGS84 coordinates
-            if (!isFinite(lng) || !isFinite(lat)) return false;
-            if (lat < -90 || lat > 90 || lng < -180 || lng > 180) return false;
-            // Reject (0, 0) — a common placeholder for "no location"
-            if (lat === 0 && lng === 0) return false;
-            return true;
+    // Expand a compact region file (written by scripts/update-data.mjs) into GeoJSON-style
+    // features: { region, fields, constants, records: [[lng, lat, ...values in `fields` order]] }
+    function expandRegionData(data) {
+        const region = data.region;
+        const fields = data.fields || [];
+        const constants = data.constants || {};
+        return (data.records || []).map(row => {
+            const properties = {};
+            for (const field of COMMON_FIELDS) properties[field] = '';
+            Object.assign(properties, constants);
+            for (let i = 0; i < fields.length; i++) properties[fields[i]] = row[i + 2];
+            if (!properties.GlobalID) properties.GlobalID = `${region}:${properties.ConsentID}`;
+            properties.Region = region;
+            properties.SourceDataset = region;
+            return { type: 'Feature', geometry: { type: 'Point', coordinates: [row[0], row[1]] }, properties };
         });
-    }
-
-    function createHbdcGlobalId(props, index) {
-        const seed = props.AuthorisationIRISID || props.WorkflowID || props.GisObjectID || props.ESRI_OID || index + 1;
-        return `HBDC:${seed}`;
-    }
-
-    function normalizeBoprcFeatures(geojson) {
-        return getPointFeatures(geojson).map(feature => ({
-            ...feature,
-            properties: {
-                ...feature.properties,
-                Status: canonicalizeStatus(feature.properties.Status),
-                Region: 'BOPRC',
-                SourceDataset: 'BOPRC',
-                HolderDisplay: feature.properties.PrimaryConsentHolder || '',
-                LocalAuthority: feature.properties.LocalAuthority || ''
-            }
-        }));
-    }
-
-    function normalizeHbdcFeatures(geojson) {
-        return getPointFeatures(geojson).map((feature, index) => {
-            const p = feature.properties || {};
-            const consentId = p.AuthorisationIRISID || p.ApplicationHistoricID || `HBDC-${index + 1}`;
-            return {
-                ...feature,
-                properties: {
-                    ...p,
-                    ConsentID: consentId,
-                    ProjectNumber: p.WorkflowID || p.ApplicationHistoricID || '',
-                    Status: canonicalizeStatus(p.AuthorisationCurrentStatus),
-                    PrimaryConsentHolder: '',
-                    HolderDisplay: p.LocalAuthority || '',
-                    PrimaryConsentHolderAddress: '',
-                    SiteAddress: p.AuthorisationPropertyAddress || '',
-                    Purpose: p.AuthPrimaryPurpose || p.ActPrimaryPurpose || '',
-                    Subtype: p.AuthorisationType || '',
-                    Category: p.AuthPrimaryIndustry || p.ActPrimaryIndustry || '',
-                    WaterManagementZone: '',
-                    WaterManagementArea: '',
-                    ComplianceOfficer: '',
-                    GrantedDate: p.DecisionServedDate || '',
-                    LodgedDate: '',
-                    ExpiryDate: p.ExpiryDate || '',
-                    StatusDate: '',
-                    CapID: p.ApplicationHistoricID || '',
-                    FactorySupplyNumber: p.WellNumber || '',
-                    PublicDocumentsLink: p.DocumentLink || '',
-                    DeemedPermitted: p.AuthorisationType === 'Deemed Permitted Activity' ? 'Yes' : '',
-                    GlobalID: createHbdcGlobalId(p, index),
-                    Region: 'HBDC',
-                    SourceDataset: 'HBDC',
-                    LocalAuthority: p.LocalAuthority || ''
-                }
-            };
-        });
-    }
-
-    // Convert an ArcGIS Unix timestamp (milliseconds) to an ISO date string (YYYY-MM-DD), or '' if null/zero.
-    function arcgisTimestampToIso(ts) {
-        if (ts === null || ts === undefined || ts === '') return '';
-        try {
-            const d = new Date(ts);
-            if (isNaN(d.getTime())) return '';
-            return d.toISOString().slice(0, 10);
-        } catch (e) {
-            return '';
-        }
-    }
-
-    // Convert a DD/MM/YYYY date string (as used by GWRC) to YYYY-MM-DD, or '' if invalid.
-    function ddmmyyyyToIso(str) {
-        if (!str || typeof str !== 'string' || str.trim() === '') return '';
-        try {
-            const parts = str.trim().split('/');
-            if (parts.length === 3 && parts[2].length === 4) {
-                const iso = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-                const d = new Date(iso);
-                if (!isNaN(d.getTime())) return iso;
-            }
-        } catch (e) {}
-        return '';
-    }
-
-    function normalizeNrcFeatures(geojson) {
-        return getPointFeatures(geojson).map((feature, index) => {
-            const p = feature.properties || {};
-            const consentId = p.IRISID || `NRC-${index + 1}`;
-            return {
-                ...feature,
-                properties: {
-                    ...p,
-                    ConsentID: consentId,
-                    ProjectNumber: '',
-                    Status: canonicalizeStatus(p.CurrentStatus),
-                    PrimaryConsentHolder: '',
-                    HolderDisplay: '',
-                    PrimaryConsentHolderAddress: '',
-                    SiteAddress: '',
-                    Purpose: p.ActivityType || '',
-                    Subtype: p.ActivitySubType || '',
-                    Category: '',
-                    WaterManagementZone: '',
-                    WaterManagementArea: '',
-                    ComplianceOfficer: '',
-                    GrantedDate: '',
-                    LodgedDate: '',
-                    ExpiryDate: '',
-                    NoExpiryDateAvailable: true,   // NRC does not publish expiry dates; trust Status field directly
-                    StatusDate: '',
-                    CapID: '',
-                    FactorySupplyNumber: '',
-                    PublicDocumentsLink: '',
-                    DeemedPermitted: '',
-                    GlobalID: `NRC:${consentId}`,
-                    Region: 'NRC',
-                    SourceDataset: 'NRC',
-                    LocalAuthority: 'Northland Regional Council'
-                }
-            };
-        });
-    }
-
-    function normalizeHrcFeatures(geojson) {
-        return getPointFeatures(geojson).map((feature, index) => {
-            const p = feature.properties || {};
-            const consentId = p.ATH_BUSID || `HRC-${index + 1}`;
-            return {
-                ...feature,
-                properties: {
-                    ...p,
-                    ConsentID: consentId,
-                    ProjectNumber: '',
-                    Status: canonicalizeStatus(p.ATH_STATUS),
-                    PrimaryConsentHolder: '',
-                    HolderDisplay: '',
-                    PrimaryConsentHolderAddress: '',
-                    SiteAddress: '',
-                    Purpose: p.ATH_PURPRIM || '',
-                    Subtype: p.ATH_TYPE || '',
-                    Category: p.ATH_INDPRIM || '',
-                    WaterManagementZone: '',
-                    WaterManagementArea: '',
-                    ComplianceOfficer: '',
-                    GrantedDate: arcgisTimestampToIso(p.ATH_GRANTED),
-                    LodgedDate: '',
-                    ExpiryDate: arcgisTimestampToIso(p.ATH_EXPIRY),
-                    StatusDate: '',
-                    CapID: '',
-                    FactorySupplyNumber: '',
-                    PublicDocumentsLink: '',
-                    DeemedPermitted: '',
-                    GlobalID: `HRC:${consentId}`,
-                    Region: 'HRC',
-                    SourceDataset: 'HRC',
-                    LocalAuthority: 'Horizons Regional Council'
-                }
-            };
-        });
-    }
-
-    function normalizeWrcFeatures(geojson) {
-        return getPointFeatures(geojson).map((feature, index) => {
-            const p = feature.properties || {};
-            const consentId = p.AUTHORISATIONIRISID || `WRC-${index + 1}`;
-            return {
-                ...feature,
-                properties: {
-                    ...p,
-                    ConsentID: consentId,
-                    ProjectNumber: p.APPLICATIONIRISID || '',
-                    Status: canonicalizeStatus(p.STATUS),
-                    PrimaryConsentHolder: p.HOLDERS || '',
-                    HolderDisplay: p.HOLDERS || '',
-                    PrimaryConsentHolderAddress: '',
-                    SiteAddress: p.AUTHORISATION_ADDRESS || '',
-                    Purpose: p.PRIMARY_INDUSTRY_PURPOSE || '',
-                    Subtype: p.ACTIVITY_TYPE || '',
-                    Category: p.ACTIVITY_SUBTYPE || '',
-                    WaterManagementZone: '',
-                    WaterManagementArea: '',
-                    ComplianceOfficer: '',
-                    GrantedDate: arcgisTimestampToIso(p.COMMENCEMENT_DATE),
-                    LodgedDate: '',
-                    ExpiryDate: arcgisTimestampToIso(p.EXPIRY_DATE),
-                    StatusDate: '',
-                    CapID: '',
-                    FactorySupplyNumber: '',
-                    PublicDocumentsLink: '',
-                    DeemedPermitted: '',
-                    GlobalID: `WRC:${consentId}`,
-                    Region: 'WRC',
-                    SourceDataset: 'WRC',
-                    LocalAuthority: 'Waikato Regional Council'
-                }
-            };
-        });
-    }
-
-    function normalizeTrcFeatures(geojson) {
-        return getPointFeatures(geojson).map((feature, index) => {
-            const p = feature.properties || {};
-            const consentId = p.Consent || p.ConsentNo || `TRC-${index + 1}`;
-            return {
-                ...feature,
-                properties: {
-                    ...p,
-                    ConsentID: consentId,
-                    ProjectNumber: '',
-                    Status: canonicalizeStatus(p.Status),
-                    PrimaryConsentHolder: '',
-                    HolderDisplay: '',
-                    PrimaryConsentHolderAddress: '',
-                    SiteAddress: '',
-                    Purpose: p.AuthorisationDescription || '',
-                    Subtype: p.ActivityType || '',
-                    Category: '',
-                    WaterManagementZone: '',
-                    WaterManagementArea: '',
-                    ComplianceOfficer: '',
-                    GrantedDate: '',
-                    LodgedDate: '',
-                    ExpiryDate: arcgisTimestampToIso(p.ExpiryDate),
-                    StatusDate: '',
-                    CapID: '',
-                    FactorySupplyNumber: '',
-                    PublicDocumentsLink: '',
-                    DeemedPermitted: '',
-                    GlobalID: `TRC:${consentId}`,
-                    Region: 'TRC',
-                    SourceDataset: 'TRC',
-                    LocalAuthority: 'Taranaki Regional Council'
-                }
-            };
-        });
-    }
-
-    function normalizeGwrcFeatures(geojson) {
-        return getPointFeatures(geojson).map((feature, index) => {
-            const p = feature.properties || {};
-            const consentId = p.RC_CON_FILENO || `GWRC-${index + 1}`;
-            // Construct document archive search link from the consent file number
-            const docLink = consentId && !consentId.startsWith('GWRC-')
-                ? `https://concessions.gw.govt.nz/documents/archive/?q=${encodeURIComponent(consentId)}`
-                : '';
-            return {
-                ...feature,
-                properties: {
-                    ...p,
-                    ConsentID: consentId,
-                    ProjectNumber: '',
-                    Status: canonicalizeStatus(p.RCstatus),
-                    PrimaryConsentHolder: '',
-                    HolderDisplay: '',
-                    PrimaryConsentHolderAddress: '',
-                    SiteAddress: '',
-                    Purpose: p.Purpose_Desc || '',
-                    Subtype: p.ConsentType || p.ConsentTyp || '',
-                    // RC_APT_DESC is a detailed activity type descriptor e.g. "CP - DISCHARGE TO LAND/WATER"
-                    Category: p.RC_APT_DESC || '',
-                    WaterManagementZone: '',
-                    WaterManagementArea: '',
-                    ComplianceOfficer: '',
-                    // commencement_date and ExpiredDate are DD/MM/YYYY strings, not timestamps
-                    GrantedDate: ddmmyyyyToIso(p.commencement_date),
-                    LodgedDate: '',
-                    ExpiryDate: ddmmyyyyToIso(p.ExpiredDate),
-                    StatusDate: ddmmyyyyToIso(p.ElapsedDate),
-                    CapID: p.DMfolder || '',
-                    FactorySupplyNumber: '',
-                    PublicDocumentsLink: docLink,
-                    DeemedPermitted: '',
-                    GlobalID: `GWRC:${consentId}`,
-                    Region: 'GWRC',
-                    SourceDataset: 'GWRC',
-                    LocalAuthority: 'Greater Wellington Regional Council'
-                }
-            };
-        });
-    }
-
-    function normalizeGdcFeatures(geojson) {
-        return getPointFeatures(geojson).map((feature, index) => {
-            const p = feature.properties || {};
-            const consentId = p.ConsentApplication || `GDC-${index + 1}`;
-            return {
-                ...feature,
-                properties: {
-                    ...p,
-                    ConsentID: consentId,
-                    ProjectNumber: p.LegacyId || '',
-                    Status: canonicalizeStatus(p.ConsentStatus),
-                    PrimaryConsentHolder: '',
-                    HolderDisplay: '',
-                    PrimaryConsentHolderAddress: '',
-                    SiteAddress: p.SiteAddress || '',
-                    Purpose: p.ConsentDetails || '',
-                    Subtype: p.ConsentType || '',
-                    Category: '',
-                    WaterManagementZone: '',
-                    WaterManagementArea: '',
-                    ComplianceOfficer: '',
-                    GrantedDate: arcgisTimestampToIso(p.DecisionDate),
-                    LodgedDate: arcgisTimestampToIso(p.DateReceived),
-                    ExpiryDate: arcgisTimestampToIso(p.ExpiryDate),
-                    StatusDate: '',
-                    CapID: p.LegacyId || '',
-                    FactorySupplyNumber: p.BoreId || '',
-                    PublicDocumentsLink: '',
-                    DeemedPermitted: '',
-                    GlobalID: `GDC:${consentId}`,
-                    Region: 'GDC',
-                    SourceDataset: 'GDC',
-                    LocalAuthority: 'Gisborne District Council'
-                }
-            };
-        });
-    }
-
-    function combineConsentDatasets(datasetPayload) {
-        if (datasetPayload && Array.isArray(datasetPayload.features)) {
-            return normalizeBoprcFeatures(datasetPayload);
-        }
-        const boprcData = datasetPayload && (datasetPayload.boprc || datasetPayload.BOPRC);
-        const hbdcData = datasetPayload && (datasetPayload.hbdc || datasetPayload.HBDC);
-        const nrcData = datasetPayload && (datasetPayload.nrc || datasetPayload.NRC);
-        const hrcData = datasetPayload && (datasetPayload.hrc || datasetPayload.HRC);
-        const wrcData = datasetPayload && (datasetPayload.wrc || datasetPayload.WRC);
-        const trcData = datasetPayload && (datasetPayload.trc || datasetPayload.TRC);
-        const gwrcData = datasetPayload && (datasetPayload.gwrc || datasetPayload.GWRC);
-        const gdcData = datasetPayload && (datasetPayload.gdc || datasetPayload.GDC);
-        return [
-            ...normalizeBoprcFeatures(boprcData),
-            ...normalizeHbdcFeatures(hbdcData),
-            ...(nrcData ? normalizeNrcFeatures(nrcData) : []),
-            ...(hrcData ? normalizeHrcFeatures(hrcData) : []),
-            ...(wrcData ? normalizeWrcFeatures(wrcData) : []),
-            ...(trcData ? normalizeTrcFeatures(trcData) : []),
-            ...(gwrcData ? normalizeGwrcFeatures(gwrcData) : []),
-            ...(gdcData ? normalizeGdcFeatures(gdcData) : [])
-        ];
     }
 
     function getRegionScopedFeatures(regions = REGION_OPTIONS) {
@@ -718,48 +402,120 @@
     }
 
     // --- Load Data ---
+    // data/manifest.json lists each region's data file; both are written by scripts/update-data.mjs.
+    async function fetchJson(url, options) {
+        const resp = await fetch(url, options);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        return resp.json();
+    }
+
+    function setLoadingMessage(text) {
+        const el = $('#loadingMessage');
+        if (el) el.textContent = text;
+    }
+
+    function showLoadError(message) {
+        $('#loadingOverlay').innerHTML = `
+            <div class="load-error">
+                <h2>Couldn't load consent data</h2>
+                <p>${escapeHtml(message)}</p>
+                <button type="button" class="btn-secondary" id="retryLoad"><i class="fas fa-rotate-right"></i> Try again</button>
+            </div>`;
+        $('#retryLoad').addEventListener('click', () => location.reload());
+    }
+
     async function loadData() {
-        // Check for embedded data first (single-file build)
-        if (window.__GEOJSON_DATA) {
-            allFeatures = combineConsentDatasets(window.__GEOJSON_DATA);
-            initApp();
+        let manifest;
+        try {
+            // Always revalidate the manifest; region files are cache-busted by their content hash.
+            manifest = await fetchJson(`${DATA_DIR}manifest.json`, { cache: 'no-cache' });
+        } catch (e) {
+            console.error('Failed to load data manifest:', e);
+            showLoadError(location.protocol === 'file:'
+                ? 'This page has to be served by a web server. From the project folder run "npm start", then open http://localhost:8080/.'
+                : `The data index could not be downloaded (${e.message}). Check your connection and try again.`);
             return;
         }
-        try {
-            // Try fetch (works with local server)
-            const [boprcResp, hbdcResp, nrcResp, hrcResp, wrcResp, trcResp, gwrcResp] = await Promise.all([
-                fetch('Resource_Consents.geojson'),
-                fetch('All_Consents_HBDC.geojson'),
-                fetch('All_Consents_NRC.geojson'),
-                fetch('All_Consents_HRC.geojson'),
-                fetch('All_Consents_WRC.geojson'),
-                fetch('All_Consents_TRC.geojson'),
-                fetch('All_Consents_GWRC.geojson'),
-                fetch('All_Consents_GDC.geojson')
-            ]);
-            const [boprcData, hbdcData, nrcData, hrcData, wrcData, trcData, gwrcData, gdcData] = await Promise.all([
-                boprcResp.json(),
-                hbdcResp.json(),
-                nrcResp.json(),
-                hrcResp.json(),
-                wrcResp.json(),
-                trcResp.json(),
-                gwrcResp.json(),
-                gdcResp.json()
-            ]);
-            allFeatures = combineConsentDatasets({ boprc: boprcData, hbdc: hbdcData, nrc: nrcData, hrc: hrcData, wrc: wrcData, trc: trcData, gwrc: gwrcData, gdc: gdcData });
-            initApp();
-        } catch (e) {
-            console.warn('Fetch failed:', e);
-            document.getElementById('loadingOverlay').innerHTML = `
-                <div style="text-align:center;color:white;max-width:500px;padding:20px;">
-                    <h2 style="margin-bottom:16px;">Local Server Required</h2>
-                    <p style="margin-bottom:12px;">To load the GeoJSON data files, please serve this folder with a local web server,
-                    or use the built single-file version (<code>BOPRC_Consents.html</code>).</p>
-                    <p style="margin-bottom:12px;">In VS Code: install <strong>Live Server</strong> extension, right-click <code>index.html</code> → "Open with Live Server"</p>
-                    <p style="font-size:13px;opacity:0.7;">Or run: <code>powershell .\\build.ps1</code> to create a standalone file.</p>
-                </div>`;
+
+        const sources = Array.isArray(manifest.regions) ? manifest.regions : [];
+        let finished = 0;
+        const progress = () => setLoadingMessage(`Loading consent data\u2026 ${finished} of ${sources.length} regions`);
+        progress();
+        const results = await Promise.all(sources.map(async source => {
+            try {
+                const version = encodeURIComponent(source.hash || source.fetchedAt || '');
+                const features = expandRegionData(await fetchJson(`${DATA_DIR}${source.file}?v=${version}`));
+                return { ...source, features };
+            } catch (e) {
+                console.error(`Failed to load ${source.id} data:`, e);
+                return { ...source, features: [], error: e.message || String(e) };
+            } finally {
+                finished++;
+                progress();
+            }
+        }));
+
+        const available = results.filter(r => !r.error);
+        dataSources = results.map(({ features, ...source }) => ({ ...source, loadedCount: features.length }));
+        if (!available.length) {
+            showLoadError('None of the regional datasets could be downloaded. Please try again later.');
+            return;
         }
+        REGION_OPTIONS = available.map(r => r.id);
+        allFeatures = available.flatMap(r => r.features);
+        initApp();
+    }
+
+    // --- Data sources ---
+    function formatTimestamp(value) {
+        const d = value ? new Date(value) : null;
+        return d && !Number.isNaN(d.getTime())
+            ? d.toLocaleDateString('en-NZ', { day: 'numeric', month: 'short', year: 'numeric' })
+            : '';
+    }
+
+    function renderRegionFilter() {
+        $('#regionFilter').innerHTML = '<span class="topbar-filter-label">Region</span>' + dataSources
+            .filter(s => !s.error)
+            .map(s => `<label class="region-pill" title="${escapeHtml(s.name)}"><input type="checkbox" value="${escapeHtml(s.id)}" checked /> <span>${escapeHtml(s.id)}</span></label>`)
+            .join('');
+    }
+
+    function renderDataSources() {
+        // Headline date: the oldest region, so the label never overstates how fresh the data is.
+        const times = dataSources
+            .filter(s => !s.error && s.fetchedAt)
+            .map(s => new Date(s.fetchedAt).getTime())
+            .filter(t => !Number.isNaN(t));
+        const failed = dataSources.filter(s => s.error);
+        $('#dataUpdatedLabel').textContent = times.length ? `Data: ${formatTimestamp(Math.min(...times))}` : 'Data sources';
+        $('#dataInfoBtn').classList.toggle('has-warning', failed.length > 0);
+        $('#dataInfoBtn').title = failed.length
+            ? `Data sources: ${failed.map(s => s.id).join(', ')} failed to load`
+            : 'Data sources and update dates';
+        $('#dataInfoBody').innerHTML = dataSources.map(s => {
+            const council = safeUrl(s.source)
+                ? `<a href="${escapeHtml(s.source)}" target="_blank" rel="noopener">${escapeHtml(s.name)}</a>`
+                : escapeHtml(s.name);
+            const count = s.error
+                ? '<span class="data-source-failed">Failed to load</span>'
+                : s.loadedCount.toLocaleString();
+            return `<tr><td><strong>${escapeHtml(s.id)}</strong></td><td>${council}</td><td class="num">${count}</td><td>${escapeHtml(formatTimestamp(s.fetchedAt)) || '\u2014'}</td></tr>`;
+        }).join('');
+    }
+
+    function setDataInfoOpen(open) {
+        // Anchor the panel below its button (the top bar's height varies with screen width).
+        if (open) {
+            const rect = $('#dataInfoBtn').getBoundingClientRect();
+            const panel = $('#dataInfoPanel');
+            const top = Math.round(rect.bottom) + 6;
+            panel.style.top = `${top}px`;
+            panel.style.right = `${Math.max(16, Math.round(window.innerWidth - rect.right))}px`;
+            panel.style.maxHeight = `calc(100vh - ${top + 16}px)`;
+        }
+        $('#dataInfoPanel').classList.toggle('hidden', !open);
+        $('#dataInfoBtn').setAttribute('aria-expanded', open ? 'true' : 'false');
     }
 
     // --- Watchlist UI ---
@@ -771,16 +527,17 @@
         } else {
             container.innerHTML = watchlist.folders.map(f => {
                 const active = activeWatchlistFolder === f.id ? ' wl-active' : '';
-                return `<div class="wl-folder${active}" data-fid="${f.id}">
-                    <div class="wl-folder-color" style="background:${f.color}"></div>
+                const fid = escapeHtml(f.id);
+                return `<div class="wl-folder${active}" data-fid="${fid}">
+                    <div class="wl-folder-color" style="background:${escapeHtml(f.color)}"></div>
                     <div class="wl-folder-info">
-                        <span class="wl-folder-name">${f.name}</span>
+                        <span class="wl-folder-name">${escapeHtml(f.name)}</span>
                         <span class="wl-folder-count">${f.consents.length} consent${f.consents.length !== 1 ? 's' : ''}</span>
                     </div>
                     <div class="wl-folder-actions">
-                        <button class="wl-btn" data-action="rename" data-fid="${f.id}" title="Rename"><i class="fas fa-pen"></i></button>
-                        <button class="wl-btn" data-action="color" data-fid="${f.id}" title="Change color"><i class="fas fa-palette"></i></button>
-                        <button class="wl-btn wl-btn-danger" data-action="delete" data-fid="${f.id}" title="Delete"><i class="fas fa-trash"></i></button>
+                        <button class="wl-btn" data-action="rename" data-fid="${fid}" title="Rename"><i class="fas fa-pen"></i></button>
+                        <button class="wl-btn" data-action="color" data-fid="${fid}" title="Change color"><i class="fas fa-palette"></i></button>
+                        <button class="wl-btn wl-btn-danger" data-action="delete" data-fid="${fid}" title="Delete"><i class="fas fa-trash"></i></button>
                     </div>
                 </div>`;
             }).join('');
@@ -797,9 +554,9 @@
             html += watchlist.folders.map(f => {
                 const inFolder = existingIds.includes(f.id);
                 return `<label class="fp-item">
-                    <input type="checkbox" data-fid="${f.id}" ${inFolder ? 'checked' : ''} />
-                    <div class="wl-folder-color" style="background:${f.color}"></div>
-                    <span>${f.name}</span>
+                    <input type="checkbox" data-fid="${escapeHtml(f.id)}" ${inFolder ? 'checked' : ''} />
+                    <div class="wl-folder-color" style="background:${escapeHtml(f.color)}"></div>
+                    <span>${escapeHtml(f.name)}</span>
                 </label>`;
             }).join('');
         }
@@ -844,11 +601,11 @@
 
     // --- Init ---
     function initApp() {
+        renderRegionFilter();
+        renderDataSources();
         buildFilters();
-        buildAlertBadges();
         renderWatchlistSidebar();
-        applyFilters();
-        addMapMarkers(filteredFeatures);
+        applyFilters(); // also builds the alert badges and map markers
         bindEvents();
         $('#loadingOverlay').classList.add('hidden');
         map.invalidateSize();
@@ -864,15 +621,15 @@
         const officers = [...new Set(allFeatures.map(f => f.properties.ComplianceOfficer).filter(Boolean))].sort();
 
         $('#filterStatus').innerHTML = statuses.map(s =>
-            `<label class="cb"><input type="checkbox" value="${s}" /> <span class="badge ${statusClass(s).replace('status-', 'badge-')}">${s}</span></label>`
+            `<label class="cb"><input type="checkbox" value="${escapeHtml(s)}" /> <span class="badge ${statusClass(s).replace('status-', 'badge-')}">${escapeHtml(s)}</span></label>`
         ).join('');
 
         $('#filterSubtype').innerHTML = subtypes.map(s =>
-            `<label class="cb"><input type="checkbox" value="${s}" /> ${s}</label>`
+            `<label class="cb"><input type="checkbox" value="${escapeHtml(s)}" /> ${escapeHtml(s)}</label>`
         ).join('');
 
         $('#filterCategory').innerHTML = categories.map(s =>
-            `<label class="cb"><input type="checkbox" value="${s}" /> ${s}</label>`
+            `<label class="cb"><input type="checkbox" value="${escapeHtml(s)}" /> ${escapeHtml(s)}</label>`
         ).join('');
 
         populateSelect('#filterZone', zones);
@@ -883,7 +640,7 @@
     function populateSelect(sel, items) {
         const el = $(sel);
         const first = el.options[0].outerHTML;
-        el.innerHTML = first + items.map(i => `<option value="${i}">${i}</option>`).join('');
+        el.innerHTML = first + items.map(i => `<option value="${escapeHtml(i)}">${escapeHtml(i)}</option>`).join('');
     }
 
     // --- Alert badges ---
@@ -929,10 +686,10 @@
             zone: $('#filterZone').value,
             area: $('#filterArea').value,
             officer: $('#filterOfficer').value,
-            expiryFrom: $('#expiryFrom').value ? new Date($('#expiryFrom').value) : null,
-            expiryTo: $('#expiryTo').value ? new Date($('#expiryTo').value) : null,
-            grantedFrom: $('#grantedFrom').value ? new Date($('#grantedFrom').value) : null,
-            grantedTo: $('#grantedTo').value ? new Date($('#grantedTo').value) : null,
+            expiryFrom: parseDate($('#expiryFrom').value),
+            expiryTo: parseDate($('#expiryTo').value),
+            grantedFrom: parseDate($('#grantedFrom').value),
+            grantedTo: parseDate($('#grantedTo').value),
             expiryFromRaw: $('#expiryFrom').value,
             expiryToRaw: $('#expiryTo').value,
             grantedFromRaw: $('#grantedFrom').value,
@@ -990,7 +747,7 @@
         container.classList.remove('is-empty');
         container.innerHTML = `<span class="active-filters-label">Active filters</span>${chips.map(chip => {
             const value = chip.value ? encodeURIComponent(chip.value) : '';
-            return `<button type="button" class="filter-chip" data-chip-type="${chip.type}" data-chip-value="${value}" title="Remove filter"><span>${chip.label}</span><i class="fas fa-times"></i></button>`;
+            return `<button type="button" class="filter-chip" data-chip-type="${chip.type}" data-chip-value="${value}" title="Remove filter"><span>${escapeHtml(chip.label)}</span><i class="fas fa-times"></i></button>`;
         }).join('')}<button type="button" class="filter-chip filter-chip-clear" data-chip-action="clear-all"><span>Clear all</span><i class="fas fa-rotate-left"></i></button>`;
         return chips;
     }
@@ -1153,11 +910,17 @@
             // Officer
             if (officer && p.ComplianceOfficer !== officer) return false;
             // Expiry date range
-            if (expiryFrom && p.ExpiryDate && new Date(p.ExpiryDate) < expiryFrom) return false;
-            if (expiryTo && p.ExpiryDate && new Date(p.ExpiryDate) > expiryTo) return false;
+            if (expiryFrom || expiryTo) {
+                const expiry = parseDate(p.ExpiryDate);
+                if (expiry && expiryFrom && expiry < expiryFrom) return false;
+                if (expiry && expiryTo && expiry > expiryTo) return false;
+            }
             // Granted date range
-            if (grantedFrom && p.GrantedDate && new Date(p.GrantedDate) < grantedFrom) return false;
-            if (grantedTo && p.GrantedDate && new Date(p.GrantedDate) > grantedTo) return false;
+            if (grantedFrom || grantedTo) {
+                const granted = parseDate(p.GrantedDate);
+                if (granted && grantedFrom && granted < grantedFrom) return false;
+                if (granted && grantedTo && granted > grantedTo) return false;
+            }
 
             // Watchlist folder filter
             if (activeWatchlistFolder) {
@@ -1183,8 +946,8 @@
             if (vb == null) vb = '';
             // Date fields
             if (sortField.includes('Date')) {
-                va = va ? new Date(va).getTime() : 0;
-                vb = vb ? new Date(vb).getTime() : 0;
+                va = parseDate(va)?.getTime() ?? 0;
+                vb = parseDate(vb)?.getTime() ?? 0;
             } else {
                 va = String(va).toLowerCase();
                 vb = String(vb).toLowerCase();
@@ -1238,18 +1001,19 @@
             const selected = gid === selectedFeatureId ? ' selected' : '';
             const watched = isWatched(gid);
             const starCls = watched ? 'fas fa-star wl-star watched' : 'far fa-star wl-star';
-            return `<tr data-gid="${gid}" class="${selected}" tabindex="0" aria-selected="${gid === selectedFeatureId ? 'true' : 'false'}">
-                <td class="star-cell"><i class="${starCls}" data-gid="${gid}" title="Add to watchlist"></i></td>
-                <td>${p.ConsentID || '\u2014'}</td>
-                <td><span class="status-badge ${sc}">${p.Status || '\u2014'}</span></td>
-                <td>${p.HolderDisplay || '\u2014'}</td>
-                <td class="address-cell" title="${p.SiteAddress || ''}">${p.SiteAddress || '\u2014'}</td>
-                <td class="purpose-cell" title="${p.Purpose || ''}">${p.Purpose || '\u2014'}</td>
-                <td>${p.Subtype || '\u2014'}</td>
-                <td>${p.Category || '\u2014'}</td>
+            const docsUrl = safeUrl(p.PublicDocumentsLink);
+            return `<tr data-gid="${escapeHtml(gid)}" class="${selected}" tabindex="0" aria-selected="${gid === selectedFeatureId ? 'true' : 'false'}">
+                <td class="star-cell"><i class="${starCls}" data-gid="${escapeHtml(gid)}" title="Add to watchlist"></i></td>
+                <td>${escapeHtml(p.ConsentID) || '\u2014'}</td>
+                <td><span class="status-badge ${sc}">${escapeHtml(p.Status) || '\u2014'}</span></td>
+                <td>${escapeHtml(p.HolderDisplay) || '\u2014'}</td>
+                <td class="address-cell" title="${escapeHtml(p.SiteAddress)}">${escapeHtml(p.SiteAddress) || '\u2014'}</td>
+                <td class="purpose-cell" title="${escapeHtml(p.Purpose)}">${escapeHtml(p.Purpose) || '\u2014'}</td>
+                <td>${escapeHtml(p.Subtype) || '\u2014'}</td>
+                <td>${escapeHtml(p.Category) || '\u2014'}</td>
                 <td>${formatDate(p.ExpiryDate)}${ec ? ` <span class="expiry-tag ${ec}">${el}</span>` : ''}</td>
                 <td>${formatDate(p.GrantedDate)}</td>
-                <td>${p.PublicDocumentsLink ? `<a href="${p.PublicDocumentsLink}" target="_blank" class="docs-link" title="View documents" onclick="event.stopPropagation()"><i class="fas fa-external-link-alt"></i></a>` : '\u2014'}</td>
+                <td>${docsUrl ? `<a href="${escapeHtml(docsUrl)}" target="_blank" rel="noopener" class="docs-link" title="View documents" onclick="event.stopPropagation()"><i class="fas fa-external-link-alt"></i></a>` : '\u2014'}</td>
             </tr>`;
         }).join('');
 
@@ -1316,19 +1080,26 @@
         const ec = expiryClass(days, p.ExpiryDate);
         const el = expiryLabel(days, p.ExpiryDate);
         const entityLabel = p.PrimaryConsentHolder ? 'Holder' : (p.LocalAuthority ? 'Local authority' : 'Holder');
-        return `<div>
-            <div class="popup-title">${p.ConsentID || 'Unknown'}</div>
-            <div><span class="status-badge ${effectiveStatusClass(p)}">${p.Status}</span>
+        const docsUrl = safeUrl(p.PublicDocumentsLink);
+        const container = document.createElement('div');
+        container.innerHTML = `
+            <div class="popup-title">${escapeHtml(p.ConsentID) || 'Unknown'}</div>
+            <div><span class="status-badge ${effectiveStatusClass(p)}">${escapeHtml(p.Status)}</span>
             ${ec ? `<span class="expiry-tag ${ec}">${el}</span>` : ''}</div>
-            <div class="popup-detail" style="margin-top:6px"><strong>Region:</strong> ${p.Region || '\u2014'}</div>
-            <div class="popup-detail"><strong>${entityLabel}:</strong> ${p.HolderDisplay || '\u2014'}</div>
-            <div class="popup-detail"><strong>Address:</strong> ${p.SiteAddress || '\u2014'}</div>
-            <div class="popup-detail"><strong>Purpose:</strong> ${p.Purpose || '\u2014'}</div>
+            <div class="popup-detail" style="margin-top:6px"><strong>Region:</strong> ${escapeHtml(p.Region) || '\u2014'}</div>
+            <div class="popup-detail"><strong>${entityLabel}:</strong> ${escapeHtml(p.HolderDisplay) || '\u2014'}</div>
+            <div class="popup-detail"><strong>Address:</strong> ${escapeHtml(p.SiteAddress) || '\u2014'}</div>
+            <div class="popup-detail"><strong>Purpose:</strong> ${escapeHtml(p.Purpose) || '\u2014'}</div>
             <div class="popup-detail"><strong>Expiry:</strong> ${formatDate(p.ExpiryDate)}</div>
-            <div class="popup-detail"><strong>Type:</strong> ${p.Subtype || '\u2014'} / ${p.Category || '\u2014'}</div>
-            ${p.PublicDocumentsLink ? `<a href="${p.PublicDocumentsLink}" target="_blank" class="popup-link"><i class="fas fa-external-link-alt"></i> View Documents</a>` : ''}
-            <div class="popup-link" onclick="document.dispatchEvent(new CustomEvent('showDetail', {detail:'${p.GlobalID}'}))">View Full Details \u2192</div>
-        </div>`;
+            <div class="popup-detail"><strong>Type:</strong> ${escapeHtml(p.Subtype) || '\u2014'} / ${escapeHtml(p.Category) || '\u2014'}</div>
+            ${docsUrl ? `<a href="${escapeHtml(docsUrl)}" target="_blank" rel="noopener" class="popup-link"><i class="fas fa-external-link-alt"></i> View Documents</a>` : ''}
+            <div class="popup-link popup-details-link" role="button" tabindex="0">View Full Details \u2192</div>`;
+        const detailsLink = container.querySelector('.popup-details-link');
+        detailsLink.addEventListener('click', () => selectFeature(p.GlobalID));
+        detailsLink.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectFeature(p.GlobalID); }
+        });
+        return container;
     }
 
 
@@ -1353,7 +1124,7 @@
             tr.classList.remove('selected');
             tr.setAttribute('aria-selected', 'false');
         });
-        const row = document.querySelector(`tr[data-gid="${globalID}"]`);
+        const row = document.querySelector(`tr[data-gid="${CSS.escape(globalID)}"]`);
         if (row) {
             row.classList.add('selected');
             row.setAttribute('aria-selected', 'true');
@@ -1378,6 +1149,9 @@
         const ec = expiryClass(days, p.ExpiryDate);
         const el = expiryLabel(days, p.ExpiryDate);
 
+        // Values are escaped when rendered; wrap pre-built markup in html() to insert it as-is.
+        const html = (markup) => ({ html: markup });
+        const docsUrl = safeUrl(p.PublicDocumentsLink);
         const hbdcFields = p.SourceDataset === 'HBDC' ? [
             ['Local Authority', p.LocalAuthority],
             ['Application Historic ID', p.ApplicationHistoricID],
@@ -1388,12 +1162,12 @@
             ['Legal Description 2', p.AuthorisationLegal2],
             ['Water Meter Required', p.WaterMeterRequired],
             ['Water Meter Installed', p.WaterMeterInstalled],
-            ['Date Water Meter Required', formatDate(p.DateWaterMeterRequired)],
+            ['Date Water Meter Required', html(formatDate(p.DateWaterMeterRequired))],
             ['Well Number', p.WellNumber]
         ] : [];
 
         const fields = [
-            ['Status', `<span class="status-badge ${effectiveStatusClass(p)}">${p.Status || '\u2014'}</span>${ec ? ` <span class="expiry-tag ${ec}">${el}</span>` : ''}`],
+            ['Status', html(`<span class="status-badge ${effectiveStatusClass(p)}">${escapeHtml(p.Status) || '\u2014'}</span>${ec ? ` <span class="expiry-tag ${ec}">${el}</span>` : ''}`)],
             ['Region', p.Region],
             ['Consent ID', p.ConsentID],
             ['Project Number', p.ProjectNumber],
@@ -1408,10 +1182,10 @@
             ['Water Management Zone', p.WaterManagementZone],
             ['Water Management Area', p.WaterManagementArea],
             ['_divider'],
-            ['Granted Date', formatDate(p.GrantedDate)],
-            ['Lodged Date', formatDate(p.LodgedDate)],
-            ['Expiry Date', formatDate(p.ExpiryDate) + (ec ? ` <span class="expiry-tag ${ec}">${el}</span>` : '')],
-            ['Status Date', formatDate(p.StatusDate)],
+            ['Granted Date', html(formatDate(p.GrantedDate))],
+            ['Lodged Date', html(formatDate(p.LodgedDate))],
+            ['Expiry Date', html(formatDate(p.ExpiryDate) + (ec ? ` <span class="expiry-tag ${ec}">${el}</span>` : ''))],
+            ['Status Date', html(formatDate(p.StatusDate))],
             ['_divider'],
             ['Compliance Officer', p.ComplianceOfficer],
             ['Deemed Permitted', p.DeemedPermitted],
@@ -1419,30 +1193,31 @@
             ['Factory Supply Number', p.FactorySupplyNumber],
             ...(hbdcFields.length ? [['_divider'], ...hbdcFields] : []),
             ['_divider'],
-            ['Public Documents', p.PublicDocumentsLink ? `<a href="${p.PublicDocumentsLink}" target="_blank">${p.PublicDocumentsLink}</a>` : null],
+            ['Public Documents', docsUrl ? html(`<a href="${escapeHtml(docsUrl)}" target="_blank" rel="noopener">${escapeHtml(docsUrl)}</a>`) : null],
             ['Coordinates', geom ? `${geom.coordinates[1].toFixed(6)}, ${geom.coordinates[0].toFixed(6)}` : null],
         ];
 
-        let html = '';
+        let content = '';
         fields.forEach(([label, value]) => {
-            if (label === '_divider') { html += '<hr class="detail-divider">'; return; }
-            if (value === null || value === undefined || value === '') return;
-            html += `<div class="detail-row"><div class="detail-label">${label}</div><div class="detail-value">${value}</div></div>`;
+            if (label === '_divider') { content += '<hr class="detail-divider">'; return; }
+            const valueHtml = value && typeof value === 'object' ? value.html : escapeHtml(value);
+            if (!valueHtml) return;
+            content += `<div class="detail-row"><div class="detail-label">${label}</div><div class="detail-value">${valueHtml}</div></div>`;
         });
 
         if (geom) {
-            html += `<button class="detail-map-btn" onclick="document.dispatchEvent(new CustomEvent('flyTo', {detail:{lat:${geom.coordinates[1]},lng:${geom.coordinates[0]}}}))"><i class="fas fa-map-marker-alt"></i> Fly to on Map</button>`;
+            content += `<button class="detail-map-btn" onclick="document.dispatchEvent(new CustomEvent('flyTo', {detail:{lat:${geom.coordinates[1]},lng:${geom.coordinates[0]}}}))"><i class="fas fa-map-marker-alt"></i> Fly to on Map</button>`;
         }
 
         // Watchlist folder button
         const folders = getFoldersForConsent(p.GlobalID);
-        const folderTags = folders.map(f => `<span class="wl-tag" style="background:${f.color}">${f.name}</span>`).join('');
-        html += `<div class="detail-wl-section">
-            <button class="detail-wl-btn" data-gid="${p.GlobalID}"><i class="fas fa-folder-plus"></i> Add to Folder</button>
+        const folderTags = folders.map(f => `<span class="wl-tag" style="background:${escapeHtml(f.color)}">${escapeHtml(f.name)}</span>`).join('');
+        content += `<div class="detail-wl-section">
+            <button class="detail-wl-btn" data-gid="${escapeHtml(p.GlobalID)}"><i class="fas fa-folder-plus"></i> Add to Folder</button>
             <div class="detail-wl-tags">${folderTags}</div>
         </div>`;
 
-        $('#detailContent').innerHTML = html;
+        $('#detailContent').innerHTML = content;
 
         // Bind add-to-folder button in detail panel
         const wlBtn = panel.querySelector('.detail-wl-btn');
@@ -1575,8 +1350,7 @@
             });
         });
 
-        // Custom events from popup
-        document.addEventListener('showDetail', e => selectFeature(e.detail));
+        // Custom event from the detail panel's "Fly to on Map" button
         document.addEventListener('flyTo', e => {
             map.flyTo([e.detail.lat, e.detail.lng], 16, { duration: 1 });
         });
@@ -1681,8 +1455,23 @@
             }
         });
         document.addEventListener('keydown', e => {
-            if (e.key === 'Escape' && !$('#detailPanel').classList.contains('hidden')) {
+            if (e.key !== 'Escape') return;
+            if (!$('#dataInfoPanel').classList.contains('hidden')) {
+                setDataInfoOpen(false);
+                $('#dataInfoBtn').focus();
+            } else if (!$('#detailPanel').classList.contains('hidden')) {
                 $('#closeDetail').click();
+            }
+        });
+
+        // Data sources panel
+        $('#dataInfoBtn').addEventListener('click', () => {
+            setDataInfoOpen($('#dataInfoPanel').classList.contains('hidden'));
+        });
+        $('#closeDataInfo').addEventListener('click', () => setDataInfoOpen(false));
+        document.addEventListener('click', e => {
+            if (!$('#dataInfoPanel').classList.contains('hidden') && !e.target.closest('#dataInfoPanel') && !e.target.closest('#dataInfoBtn')) {
+                setDataInfoOpen(false);
             }
         });
 
