@@ -1,0 +1,15 @@
+{
+  "name": "pivotmap",
+  "private": true,
+  "description": "Map and table viewer for New Zealand regional council resource consents",
+  "license": "UNLICENSED",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node scripts/serve.mjs",
+    "update-data": "node scripts/update-data.mjs",
+    "test": "node --test"
+  }
+}

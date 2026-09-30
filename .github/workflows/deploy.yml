@@ -1,0 +1,89 @@
+# Publishes public/ to GitHub Pages.
+#
+# - Every push to main deploys the site as committed.
+# - Once a day (and when run by hand from the Actions tab) it first downloads fresh
+#   consent data from each council, commits it to public/data/, then deploys.
+#
+# One-time setup: Settings → Pages → Build and deployment → Source: "GitHub Actions".
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '23 16 * * *' # daily at 16:23 UTC = 4:23am NZST / 5:23am NZDT
+  workflow_dispatch:
+    inputs:
+      refresh_data:
+        description: Download fresh consent data before deploying
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+# Queue runs rather than overlap them, so data commits and deploys never race.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: write # to commit refreshed data
+    env:
+      REFRESH_DATA: ${{ github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.refresh_data) }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          # Build the branch as it is now, not the triggering commit, so a queued run
+          # never redeploys data that an earlier scheduled run has since refreshed.
+          ref: ${{ github.ref }}
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 22
+
+      - name: Run tests
+        run: npm test
+
+      - name: Refresh consent data
+        if: env.REFRESH_DATA == 'true'
+        run: npm run update-data
+
+      - name: Commit refreshed data
+        if: env.REFRESH_DATA == 'true' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/data
+          if git diff --cached --quiet; then
+            echo "Consent data unchanged."
+            exit 0
+          fi
+          git commit -m "Update consent data ($(date -u +%Y-%m-%d))"
+          # main may have moved during the download; data files don't conflict with code changes.
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+      - uses: actions/configure-pages@v6
+
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: public
+
+  deploy:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
