@@ -23,6 +23,17 @@ function first(...values) {
     return '';
 }
 
+const ENTITIES = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&#039;': "'", '&apos;': "'" };
+
+// Like first(), for descriptive text: decodes HTML entities some councils leave in
+// ("R Smith &amp; G Jones") and collapses line breaks and repeated spaces.
+export function text(...values) {
+    return first(...values)
+        .replace(/&(amp|lt|gt|quot|apos|#0?39);/g, m => ENTITIES[m])
+        .replace(/\s+/g, ' ')
+        .trim();
+}
+
 const NZ_DATE_PARTS = new Intl.DateTimeFormat('en-NZ', {
     timeZone: 'Pacific/Auckland', year: 'numeric', month: '2-digit', day: '2-digit'
 });
@@ -80,12 +91,12 @@ export const REGIONS = [
             ConsentID: first(p.ConsentID, `BOPRC-${index + 1}`),
             ProjectNumber: first(p.ProjectNumber),
             Status: canonicalizeStatus(p.Status),
-            PrimaryConsentHolder: first(p.PrimaryConsentHolder),
-            HolderDisplay: first(p.PrimaryConsentHolder),
-            PrimaryConsentHolderAddress: first(p.PrimaryConsentHolderAddress),
+            PrimaryConsentHolder: text(p.PrimaryConsentHolder),
+            HolderDisplay: text(p.PrimaryConsentHolder),
+            PrimaryConsentHolderAddress: text(p.PrimaryConsentHolderAddress),
             LocalAuthority: first(p.LocalAuthority),
-            SiteAddress: first(p.SiteAddress),
-            Purpose: first(p.Purpose),
+            SiteAddress: text(p.SiteAddress),
+            Purpose: text(p.Purpose),
             Subtype: first(p.Subtype),
             Category: first(p.Category),
             WaterManagementZone: first(p.WaterManagementZone),
@@ -110,10 +121,10 @@ export const REGIONS = [
             ConsentID: first(p.AuthorisationIRISID, p.ApplicationHistoricID, `HBDC-${index + 1}`),
             ProjectNumber: first(p.WorkflowID, p.ApplicationHistoricID),
             Status: canonicalizeStatus(p.AuthorisationCurrentStatus),
-            HolderDisplay: first(p.LocalAuthority),
+            // LocalAuthority is the district the consent is in; Hawke's Bay doesn't publish holders.
             LocalAuthority: first(p.LocalAuthority),
-            SiteAddress: first(p.AuthorisationPropertyAddress),
-            Purpose: first(p.AuthPrimaryPurpose, p.ActPrimaryPurpose),
+            SiteAddress: text(p.AuthorisationPropertyAddress),
+            Purpose: text(p.AuthPrimaryPurpose, p.ActPrimaryPurpose),
             Subtype: first(p.AuthorisationType),
             Category: first(p.AuthPrimaryIndustry, p.ActPrimaryIndustry),
             GrantedDate: timestampToIsoDate(p.DecisionServedDate),
@@ -165,7 +176,7 @@ export const REGIONS = [
             return {
                 ConsentID: consentId,
                 Status: canonicalizeStatus(p.ATH_STATUS),
-                Purpose: first(p.ATH_PURPRIM),
+                Purpose: text(p.ATH_PURPRIM),
                 Subtype: first(p.ATH_TYPE),
                 Category: first(p.ATH_INDPRIM),
                 GrantedDate: timestampToIsoDate(p.ATH_GRANTED),
@@ -185,10 +196,10 @@ export const REGIONS = [
                 ConsentID: consentId,
                 ProjectNumber: first(p.APPLICATIONIRISID),
                 Status: canonicalizeStatus(p.STATUS),
-                PrimaryConsentHolder: first(p.HOLDERS),
-                HolderDisplay: first(p.HOLDERS),
-                SiteAddress: first(p.AUTHORISATION_ADDRESS),
-                Purpose: first(p.PRIMARY_INDUSTRY_PURPOSE),
+                PrimaryConsentHolder: text(p.HOLDERS),
+                HolderDisplay: text(p.HOLDERS),
+                SiteAddress: text(p.AUTHORISATION_ADDRESS),
+                Purpose: text(p.PRIMARY_INDUSTRY_PURPOSE),
                 Subtype: first(p.ACTIVITY_TYPE),
                 Category: first(p.ACTIVITY_SUBTYPE),
                 GrantedDate: timestampToIsoDate(p.COMMENCEMENT_DATE),
@@ -207,8 +218,10 @@ export const REGIONS = [
             return {
                 ConsentID: consentId,
                 Status: canonicalizeStatus(p.Status),
-                Purpose: first(p.AuthorisationDescription),
+                Purpose: text(p.AuthorisationDescription),
                 Subtype: first(p.ActivityType),
+                Category: text(p.Activity_Subtype),
+                GrantedDate: timestampToIsoDate(p.CommencementDate),
                 ExpiryDate: timestampToIsoDate(p.ExpiryDate),
                 GlobalID: `TRC:${consentId}`,
                 LocalAuthority: 'Taranaki Regional Council'
@@ -224,7 +237,7 @@ export const REGIONS = [
             return {
                 ConsentID: consentId,
                 Status: canonicalizeStatus(p.RCstatus),
-                Purpose: first(p.Purpose_Desc),
+                Purpose: text(p.Purpose_Desc),
                 Subtype: first(p.ConsentType, p.ConsentTyp),
                 // RC_APT_DESC is a detailed activity type descriptor e.g. "CP - DISCHARGE TO LAND/WATER"
                 Category: first(p.RC_APT_DESC),
@@ -252,8 +265,8 @@ export const REGIONS = [
                 ConsentID: consentId,
                 ProjectNumber: first(p.LegacyId),
                 Status: canonicalizeStatus(p.ConsentStatus),
-                SiteAddress: first(p.SiteAddress),
-                Purpose: first(p.ConsentDetails),
+                SiteAddress: text(p.SiteAddress),
+                Purpose: text(p.ConsentDetails),
                 Subtype: first(p.ConsentType),
                 GrantedDate: timestampToIsoDate(p.DecisionDate),
                 LodgedDate: timestampToIsoDate(p.DateReceived),
