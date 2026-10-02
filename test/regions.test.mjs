@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
-    REGIONS, canonicalizeStatus, ddmmyyyyToIsoDate, normalizeRegion, timestampToIsoDate
+    REGIONS, canonicalizeStatus, ddmmyyyyToIsoDate, normalizeRegion, text, timestampToIsoDate
 } from '../scripts/regions.mjs';
 
 const region = (id) => REGIONS.find(r => r.id === id);
@@ -39,6 +39,15 @@ describe('canonicalizeStatus', () => {
         assert.equal(canonicalizeStatus('Lapsed Consent'), 'Lapsed');
         assert.equal(canonicalizeStatus('Expired - S.124 Protection'), 'Expired - S.124 Protection');
         assert.equal(canonicalizeStatus(null), '');
+    });
+});
+
+describe('text', () => {
+    it('decodes HTML entities and tidies whitespace', () => {
+        assert.equal(text('R Mourits &amp; G Oldham'), 'R Mourits & G Oldham');
+        assert.equal(text('Discharge treated wastewater \r\nto land  '), 'Discharge treated wastewater to land');
+        assert.equal(text(null, ' second '), 'second');
+        assert.equal(text(), '');
     });
 });
 
@@ -92,7 +101,9 @@ describe('region field mappings', () => {
         assert.equal(r.fields.ConsentID, 'AUTH-121535-12');
         assert.equal(r.fields.ProjectNumber, 'WP140555Tj');
         assert.equal(r.fields.Purpose, 'Water Supply - Irrigation');
-        assert.equal(r.fields.HolderDisplay, "Central Hawke's Bay District");
+        // The district isn't the consent holder; Hawke's Bay doesn't publish holders
+        assert.equal(r.fields.HolderDisplay, undefined);
+        assert.equal(r.fields.LocalAuthority, "Central Hawke's Bay District");
         assert.equal(r.fields.DeemedPermitted, 'Yes');
         assert.equal(r.fields.ExpiryDate, '2035-05-31');
         assert.equal(r.fields.DateWaterMeterRequired, '2012-11-10');
@@ -106,6 +117,16 @@ describe('region field mappings', () => {
         assert.equal(r.fields.GlobalID, 'NRC:AUT.031115.01.01');
         assert.equal(r.fields.NoExpiryDateAvailable, true);
         assert.equal(r.fields.Purpose, 'Bore Consent');
+    });
+
+    it('TRC maps the activity subtype and commencement date', () => {
+        const [r] = normalizeRegion(region('TRC'), { features: [point(174.1, -39.5, {
+            Consent: 'R2/0017-3.1', Status: 'Current', ActivityType: 'Water Permit', Activity_Subtype: 'Water - Take',
+            AuthorisationDescription: 'To take and use water from the Waiokura Stream', CommencementDate: 1544659200000, ExpiryDate: 1874966400000
+        })] });
+        assert.equal(r.fields.Category, 'Water - Take');
+        assert.equal(r.fields.GrantedDate, '2018-12-13');
+        assert.equal(r.fields.ExpiryDate, '2029-06-01');
     });
 
     it('GWRC parses DD/MM/YYYY dates and builds a documents link', () => {

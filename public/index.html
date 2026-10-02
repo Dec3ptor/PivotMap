@@ -1,263 +1,155 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-NZ">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Regional Resource Consents</title>
-    <meta name="description" content="Map and search resource consents published by New Zealand regional councils, with expiry alerts and watchlists.">
-    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%231e293b'/%3E%3Cpath d='M16 6a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z' fill='%233b82f6'/%3E%3C/svg%3E">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
-    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
-    <link rel="stylesheet" href="styles.css" />
+    <title>Consent Renewals</title>
+    <meta name="description" content="Find New Zealand resource consents nearing expiry — renewal opportunities with property details, for WSP NZ teams.">
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231d2125'/%3E%3Cpath d='M16 6a7 7 0 0 0-7 7c0 5.2 7 13 7 13s7-7.8 7-13a7 7 0 0 0-7-7zm0 9.5a2.5 2.5 0 1 1 0-5 2.5 2.5 0 0 1 0 5z' fill='%23ef4444'/%3E%3C/svg%3E">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Top Bar -->
-    <header id="topbar">
-        <div class="topbar-left">
-            <h1><i class="fas fa-file-contract"></i> Resource Consents Viewer</h1>
+    <header class="topbar">
+        <div class="brand">
+            <span class="brand-mark" aria-hidden="true"><i class="fas fa-location-dot"></i></span>
+            <span class="brand-text">
+                <span class="brand-name">Consent Renewals</span>
+                <span class="brand-sub">Renewal opportunities · WSP NZ</span>
+            </span>
         </div>
-        <div class="topbar-center">
-            <div class="search-box">
-                <i class="fas fa-search"></i>
-                <input type="text" id="globalSearch" placeholder="Search consents by ID, holder, address, purpose..." />
-            </div>
-            <!-- Region pills are generated from data/manifest.json -->
-            <div class="topbar-filter-group" id="regionFilter" aria-label="Region filter">
-                <span class="topbar-filter-label">Region</span>
-            </div>
+        <div class="search" id="searchWrap">
+            <i class="fas fa-magnifying-glass search-icon" aria-hidden="true"></i>
+            <input type="search" id="search" autocomplete="off" spellcheck="false"
+                placeholder="Search holder, address, consent number or activity"
+                aria-label="Search consents, or find a place" aria-controls="searchMenu" aria-expanded="false">
+            <button type="button" class="search-clear" id="searchClear" aria-label="Clear search" hidden><i class="fas fa-xmark"></i></button>
+            <div class="search-menu" id="searchMenu" role="listbox" hidden></div>
         </div>
-        <div class="topbar-right">
-            <div class="alert-badges" id="alertBadges"></div>
-            <button id="toggleFilters" class="btn-icon" title="Toggle Filters"><i class="fas fa-filter"></i></button>
+        <div class="topbar-actions">
+            <button type="button" class="topbar-btn" id="dataBtn" aria-haspopup="dialog" aria-controls="dataPanel" aria-expanded="false">
+                <i class="fas fa-database" aria-hidden="true"></i><span id="dataLabel">Data</span>
+            </button>
+            <button type="button" class="topbar-btn icon-only" id="helpBtn" aria-haspopup="dialog" aria-label="How this works">
+                <i class="fas fa-circle-question" aria-hidden="true"></i>
+            </button>
         </div>
     </header>
 
-    <div id="main-container">
-        <!-- Sidebar Filters -->
-        <aside id="sidebar" class="open">
-            <div class="sidebar-header">
-                <h2><i class="fas fa-sliders-h"></i> Filters</h2>
-                <button id="clearFilters" class="btn-small">Clear All</button>
-            </div>
-            <div class="sidebar-group open">
-                <button type="button" class="accordion-toggle" aria-expanded="true">
-                    <span>
-                        <span class="accordion-title">Quick Filters</span>
-                        <span class="accordion-subtitle">Status and expiry alerts</span>
-                    </span>
-                    <i class="fas fa-chevron-down accordion-icon"></i>
-                </button>
-                <div class="accordion-panel">
-                    <div class="filter-section">
-                        <label>Status</label>
-                        <div id="filterStatus" class="checkbox-group"></div>
+    <main class="layout" id="layout">
+        <section class="panel" id="panel" aria-label="Consents">
+            <div class="panel-scroll" id="panelScroll">
+                <div class="controls">
+                    <div class="control-label" id="windowLabel">Expiring within</div>
+                    <div class="segmented" id="windowControl" role="radiogroup" aria-labelledby="windowLabel"></div>
+                    <div class="filter-row">
+                        <div class="dropdown" data-dropdown="regions"></div>
+                        <div class="dropdown" data-dropdown="work"></div>
+                        <div class="dropdown" data-dropdown="holders"></div>
+                        <div class="dropdown" data-dropdown="more"></div>
                     </div>
-                    <div class="filter-section">
-                        <label>Expiry Alert</label>
-                        <div id="filterExpiry" class="checkbox-group">
-                            <label class="cb"><input type="checkbox" value="expired" /> <span class="badge badge-expired">Expired</span></label>
-                            <label class="cb cb-sub"><input type="checkbox" value="expired-30" /> <span class="badge badge-expired">Expired ≤30 days ago</span></label>
-                            <label class="cb cb-sub"><input type="checkbox" value="expired-60" /> <span class="badge badge-expired">Expired ≤60 days ago</span></label>
-                            <label class="cb cb-sub"><input type="checkbox" value="expired-90" /> <span class="badge badge-expired">Expired ≤90 days ago</span></label>
-                            <label class="cb cb-sub"><input type="checkbox" value="expired-180" /> <span class="badge badge-expired">Expired ≤6 months ago</span></label>
-                            <label class="cb cb-sub"><input type="checkbox" value="expired-365" /> <span class="badge badge-expired">Expired ≤12 months ago</span></label>
-                            <label class="cb"><input type="checkbox" value="30" /> <span class="badge badge-critical">Within 30 days</span></label>
-                            <label class="cb"><input type="checkbox" value="60" /> <span class="badge badge-warning">Within 60 days</span></label>
-                            <label class="cb"><input type="checkbox" value="90" /> <span class="badge badge-caution">Within 90 days</span></label>
-                            <label class="cb"><input type="checkbox" value="180" /> <span class="badge badge-info">Within 6 months</span></label>
-                            <label class="cb"><input type="checkbox" value="365" /> <span class="badge badge-note">Within 12 months</span></label>
-                        </div>
-                    </div>
-                    <div class="filter-summary" id="filterSummary">Showing all consents</div>
+                    <div class="active-chips" id="activeChips" hidden></div>
                 </div>
+
+                <div class="summary" id="summary" aria-live="polite"></div>
+
+                <div class="tabs" role="tablist" aria-label="Views">
+                    <button type="button" class="tab active" role="tab" id="tab-consents" data-tab="consents" aria-selected="true">Consents <span class="tab-count" id="countConsents"></span></button>
+                    <button type="button" class="tab" role="tab" id="tab-holders" data-tab="holders" aria-selected="false">Holders <span class="tab-count" id="countHolders"></span></button>
+                    <button type="button" class="tab" role="tab" id="tab-shortlist" data-tab="shortlist" aria-selected="false"><i class="fas fa-star" aria-hidden="true"></i> Shortlist <span class="tab-count" id="countShortlist"></span></button>
+                </div>
+
+                <div class="list-area" id="listArea" role="tabpanel" aria-labelledby="tab-consents"></div>
             </div>
 
-            <div class="sidebar-group">
-                <button type="button" class="accordion-toggle" aria-expanded="false">
-                    <span>
-                        <span class="accordion-title">Consent Details</span>
-                        <span class="accordion-subtitle">Subtype and category</span>
-                    </span>
-                    <i class="fas fa-chevron-down accordion-icon"></i>
-                </button>
-                <div class="accordion-panel">
-                    <div class="filter-section">
-                        <label>Subtype</label>
-                        <div id="filterSubtype" class="checkbox-group"></div>
-                    </div>
-                    <div class="filter-section">
-                        <label>Category</label>
-                        <div id="filterCategory" class="checkbox-group"></div>
-                    </div>
+            <!-- Consent details and property details slide over the list -->
+            <div class="sheet" id="sheet" hidden>
+                <div class="sheet-head">
+                    <button type="button" class="back-btn" id="sheetBack"><i class="fas fa-arrow-left" aria-hidden="true"></i> <span id="sheetBackLabel">Back to list</span></button>
+                    <div class="sheet-actions" id="sheetActions"></div>
                 </div>
+                <div class="sheet-body" id="sheetBody" tabindex="-1"></div>
             </div>
+        </section>
 
-            <div class="sidebar-group">
-                <button type="button" class="accordion-toggle" aria-expanded="false">
-                    <span>
-                        <span class="accordion-title">Location &amp; Officer</span>
-                        <span class="accordion-subtitle">Zone, area and compliance owner</span>
-                    </span>
-                    <i class="fas fa-chevron-down accordion-icon"></i>
-                </button>
-                <div class="accordion-panel">
-                    <div class="filter-section">
-                        <label>Water Management Zone</label>
-                        <select id="filterZone" class="filter-select"><option value="">All Zones</option></select>
-                    </div>
-                    <div class="filter-section">
-                        <label>Water Management Area</label>
-                        <select id="filterArea" class="filter-select"><option value="">All Areas</option></select>
-                    </div>
-                    <div class="filter-section">
-                        <label>Compliance Officer</label>
-                        <select id="filterOfficer" class="filter-select"><option value="">All Officers</option></select>
-                    </div>
-                </div>
-            </div>
+        <section class="map-wrap" aria-label="Map">
+            <div id="map"></div>
+            <div class="map-hint" id="mapHint" hidden></div>
+        </section>
+    </main>
 
-            <div class="sidebar-group">
-                <button type="button" class="accordion-toggle" aria-expanded="false">
-                    <span>
-                        <span class="accordion-title">Date Filters</span>
-                        <span class="accordion-subtitle">Expiry and granted ranges</span>
-                    </span>
-                    <i class="fas fa-chevron-down accordion-icon"></i>
-                </button>
-                <div class="accordion-panel">
-                    <div class="filter-section">
-                        <label>Expiry Date Range</label>
-                        <div class="date-range">
-                            <input type="date" id="expiryFrom" /> <span>to</span> <input type="date" id="expiryTo" />
-                        </div>
-                    </div>
-                    <div class="filter-section">
-                        <label>Granted Date Range</label>
-                        <div class="date-range">
-                            <input type="date" id="grantedFrom" /> <span>to</span> <input type="date" id="grantedTo" />
-                        </div>
-                    </div>
-                </div>
-            </div>
+    <nav class="mobile-switch" aria-label="Switch view">
+        <button type="button" class="active" data-view="list"><i class="fas fa-list" aria-hidden="true"></i> List</button>
+        <button type="button" data-view="map"><i class="fas fa-map" aria-hidden="true"></i> Map</button>
+    </nav>
 
-            <div class="sidebar-group open">
-                <button type="button" class="accordion-toggle" aria-expanded="true">
-                    <span>
-                        <span class="accordion-title">Watchlist</span>
-                        <span class="accordion-subtitle">Saved consent folders</span>
-                    </span>
-                    <i class="fas fa-chevron-down accordion-icon"></i>
-                </button>
-                <div class="accordion-panel">
-                    <div class="wl-section">
-                        <div class="wl-header">
-                            <h2><i class="fas fa-bookmark"></i> Watchlist</h2>
-                            <button id="wlCreateFolder" class="btn-small" title="New Folder"><i class="fas fa-plus"></i> New</button>
-                        </div>
-                        <div id="watchlistFolders" class="wl-folders"></div>
-                        <div class="wl-io-buttons">
-                            <button id="wlExport" class="btn-small" title="Export watchlist"><i class="fas fa-download"></i> Export</button>
-                            <button id="wlImport" class="btn-small" title="Import watchlist"><i class="fas fa-upload"></i> Import</button>
-                            <input type="file" id="wlImportFile" accept=".json" style="display:none" />
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </aside>
+    <div class="popover data-panel" id="dataPanel" role="dialog" aria-labelledby="dataTitle" hidden>
+        <div class="popover-head">
+            <h2 id="dataTitle">Where the data comes from</h2>
+            <button type="button" class="icon-btn" data-close aria-label="Close"><i class="fas fa-xmark"></i></button>
+        </div>
+        <div id="dataBody"></div>
+    </div>
 
-        <!-- Main Content -->
-        <div id="content">
-            <!-- View toggle bar (always visible) -->
-            <div id="viewToggleBar">
-                <button id="viewSplit" class="view-btn active" title="Split View"><i class="fas fa-columns"></i> Split</button>
-                <button id="viewMap" class="view-btn" title="Map Only"><i class="fas fa-map"></i> Map</button>
-                <button id="viewTable" class="view-btn" title="Table Only"><i class="fas fa-table"></i> Table</button>
-                <button id="dataInfoBtn" class="data-info-btn" type="button" title="Data sources and update dates" aria-haspopup="dialog" aria-expanded="false" aria-controls="dataInfoPanel">
-                    <i class="fas fa-database"></i> <span id="dataUpdatedLabel">Data sources</span>
-                </button>
+    <div class="modal" id="helpModal" role="dialog" aria-modal="true" aria-labelledby="helpTitle" hidden>
+        <div class="modal-card">
+            <div class="popover-head">
+                <h2 id="helpTitle">How this works</h2>
+                <button type="button" class="icon-btn" data-close aria-label="Close"><i class="fas fa-xmark"></i></button>
             </div>
-            <!-- Map -->
-            <div id="map-container">
-                <div id="map"></div>
-            </div>
-            <!-- Drag handle -->
-            <div id="resizeHandle"><div class="handle-grip"><i class="fas fa-grip-lines"></i></div></div>
-            <!-- Table -->
-            <div id="table-container">
-                <div class="results-overview">
-                    <div class="results-stats" id="resultsStats" aria-live="polite"></div>
-                    <div class="active-filters is-empty" id="activeFilters" aria-live="polite"></div>
-                </div>
-                <div class="table-toolbar">
-                    <div class="table-info" id="tableInfo" aria-live="polite">Loading...</div>
-                    <div class="table-controls">
-                        <button id="exportFilteredCsv" class="btn-secondary" type="button" title="Export currently filtered results to CSV">
-                            <i class="fas fa-file-csv"></i> Export CSV
-                        </button>
-                    </div>
-                </div>
-                <div class="table-wrap">
-                    <table id="consentsTable">
-                        <thead>
-                            <tr>
-                                <th class="star-header"><i class="fas fa-star"></i></th>
-                                <th data-sort="ConsentID">Consent ID <i class="fas fa-sort"></i></th>
-                                <th data-sort="Status">Status <i class="fas fa-sort"></i></th>
-                                <th data-sort="HolderDisplay">Holder / Authority <i class="fas fa-sort"></i></th>
-                                <th data-sort="SiteAddress">Address <i class="fas fa-sort"></i></th>
-                                <th data-sort="Purpose">Purpose <i class="fas fa-sort"></i></th>
-                                <th data-sort="Subtype">Subtype <i class="fas fa-sort"></i></th>
-                                <th data-sort="Category">Category <i class="fas fa-sort"></i></th>
-                                <th data-sort="ExpiryDate">Expiry <i class="fas fa-sort"></i></th>
-                                <th data-sort="GrantedDate">Granted <i class="fas fa-sort"></i></th>
-                                <th>Docs</th>
-                            </tr>
-                        </thead>
-                        <tbody id="tableBody"></tbody>
-                    </table>
-                </div>
-                <div class="pagination" id="pagination"></div>
+            <div class="modal-body help">
+                <section>
+                    <h3>Finding renewal work</h3>
+                    <ol>
+                        <li><strong>Pick a time window</strong> — consents that expire inside it will need replacing, so their holders will need applications, assessments and reports.</li>
+                        <li><strong>Narrow it down</strong> by council, type of work and type of holder. Small jobs (moorings, domestic bores, septic tanks) and farm effluent are hidden until you tick them.</li>
+                        <li><strong>Open a consent</strong> to see its renewal deadline, the property it's on, council documents and other consents at the same site.</li>
+                        <li><strong>Star</strong> the ones worth chasing. Your shortlist and notes stay in this browser; use <em>Export</em> to share them as a spreadsheet.</li>
+                    </ol>
+                    <p>The <strong>Holders</strong> tab ranks consent holders by how many of their consents fall in your selection — a quick way to spot clients with several renewals coming up.</p>
+                </section>
+                <section>
+                    <h3>Renewal deadlines (RMA s124)</h3>
+                    <p>A holder who applies for a replacement consent <strong>at least 6 months before expiry</strong> can keep operating while the new application is processed. Between 6 and 3 months before expiry the council can still allow it; with less than 3 months to go there's no protection. Each consent shows its <em>lodge by</em> date.</p>
+                </section>
+                <section id="help-law">
+                    <h3>Law changes that move expiry dates</h3>
+                    <ul>
+                        <li><span class="tag tag-law">31 Dec 2027</span> RMA s123C (December 2025) extended most consents that were due to expire before 31 December 2027 to that date — which is why so many consents share it.</li>
+                        <li>The <strong>Planning Act 2026</strong> is expected to extend most consents again, to about two years after the national transition period ends (around 2031).</li>
+                        <li><span class="tag tag-firm">Firm</span> marks expiry dates the extensions don't reach: freshwater consents (water permits and discharges that can reach water) at their 35-year maximum term, and wastewater network consents. These are the renewals most certain to happen on time.</li>
+                    </ul>
+                    <p class="muted">This is a guide, not legal advice — confirm a consent's status with the council.</p>
+                </section>
+                <section>
+                    <h3>Property information</h3>
+                    <p>Zoom in and click anywhere on the map to see the land parcel there: legal description, area, record of title numbers and addresses, plus every consent on that parcel. Parcel boundaries appear when you zoom in close.</p>
+                    <p>Parcel, title and address data is from Toitū Te Whenua LINZ (CC BY 4.0). <strong>Owner names aren't shown</strong>: LINZ only releases them under its Licence for Personal Data, which doesn't allow unsolicited direct marketing. Order a title from LINZ or use your licensed property tools when you need the owner.</p>
+                </section>
+                <section>
+                    <h3>Know the gaps</h3>
+                    <ul>
+                        <li>Only Bay of Plenty and Waikato publish holder names. Elsewhere the holder type is guessed from what the consent is for (marked <em>likely</em>).</li>
+                        <li>Northland publishes no expiry dates, so its consents only appear under <em>All</em>. Taranaki publishes current consents only.</li>
+                        <li>Types of work are worked out from each council's own wording, so a few consents will be in the wrong group.</li>
+                        <li>Data is downloaded from each council's public map service every day; the <em>Data</em> button shows when each council last updated.</li>
+                    </ul>
+                </section>
             </div>
         </div>
     </div>
 
-    <!-- Data sources -->
-    <div id="dataInfoPanel" class="data-info-panel hidden" role="dialog" aria-labelledby="dataInfoTitle">
-        <div class="data-info-header">
-            <h3 id="dataInfoTitle"><i class="fas fa-database"></i> Data sources</h3>
-            <button id="closeDataInfo" class="btn-icon" type="button" title="Close"><i class="fas fa-times"></i></button>
-        </div>
-        <p class="data-info-intro">Consents are downloaded from each council's public ArcGIS service and refreshed automatically each day. <strong>Updated</strong> shows when each council's data was last downloaded. Check with the council before relying on a record.</p>
-        <table class="data-info-table">
-            <thead><tr><th>Region</th><th>Council</th><th class="num">Consents</th><th>Updated</th></tr></thead>
-            <tbody id="dataInfoBody"></tbody>
-        </table>
-    </div>
+    <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
-    <!-- Folder Picker (floating) -->
-    <div id="folderPicker" class="folder-picker hidden"></div>
-
-    <!-- Detail Panel -->
-    <div id="detailPanel" class="detail-panel hidden">
-        <div class="detail-header">
-            <i id="detailStar" class="far fa-star detail-star" title="Add to watchlist"></i>
-            <h3 id="detailTitle">Consent Details</h3>
-            <button id="closeDetail" class="btn-icon"><i class="fas fa-times"></i></button>
-        </div>
-        <div id="detailContent" class="detail-content"></div>
-    </div>
-
-    <!-- Loading overlay -->
-    <div id="loadingOverlay">
-        <div class="spinner"></div>
-        <p id="loadingMessage">Loading consent data&hellip;</p>
+    <div class="loading" id="loading">
+        <div class="spinner" aria-hidden="true"></div>
+        <p id="loadingMessage">Loading consents&hellip;</p>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
-    <script src="app.js"></script>
+    <script type="module" src="js/main.js"></script>
 </body>
 </html>
-
