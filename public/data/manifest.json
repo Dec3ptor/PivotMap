@@ -6,8 +6,8 @@
       "name": "Bay of Plenty Regional Council",
       "file": "boprc.json",
       "count": 29803,
-      "hash": "d0098fe0c097",
-      "fetchedAt": "2026-10-02T20:49:50.629Z",
+      "hash": "790bee56e0b7",
+      "fetchedAt": "2026-10-03T19:18:44.324Z",
       "source": "https://gis.boprc.govt.nz/server2/rest/services/BayOfPlentyMaps/ConsentsandCompliance/MapServer/45"
     },
     {
@@ -24,8 +24,8 @@
       "name": "Northland Regional Council",
       "file": "nrc.json",
       "count": 36274,
-      "hash": "1c2e2f2db0b6",
-      "fetchedAt": "2026-10-02T20:51:25.801Z",
+      "hash": "603699bfaabc",
+      "fetchedAt": "2026-10-03T19:20:19.018Z",
       "source": "https://services2.arcgis.com/J8errK5dyxu7Xjf7/arcgis/rest/services/Resource_Consents_/FeatureServer/0"
     },
     {
@@ -34,7 +34,7 @@
       "file": "hrc.json",
       "count": 10795,
       "hash": "56515857274c",
-      "fetchedAt": "2026-10-02T20:51:30.473Z",
+      "fetchedAt": "2026-10-03T19:20:23.029Z",
       "source": "https://services1.arcgis.com/VuN78wcRdq1Oj69W/ArcGIS/rest/services/OpenData_RegulatoryActivity/FeatureServer/3"
     },
     {
@@ -43,16 +43,16 @@
       "file": "wrc.json",
       "count": 24762,
       "hash": "22c2941d9499",
-      "fetchedAt": "2026-10-02T20:51:38.578Z",
+      "fetchedAt": "2026-10-03T19:20:31.039Z",
       "source": "https://services.arcgis.com/2bzQ0Ix3iO7MItUa/arcgis/rest/services/WDP_AUTH_ACTIVE_RESOURCE_CONSENTS_EXT/FeatureServer/0"
     },
     {
       "id": "TRC",
       "name": "Taranaki Regional Council",
       "file": "trc.json",
-      "count": 5155,
-      "hash": "14ae2acdf1e6",
-      "fetchedAt": "2026-10-02T20:51:40.304Z",
+      "count": 5154,
+      "hash": "3b0f5299196d",
+      "fetchedAt": "2026-10-03T19:20:33.112Z",
       "source": "https://services.arcgis.com/MMPHUPU6MnEt0lEK/arcgis/rest/services/Ressource_Consents/FeatureServer/7"
     },
     {
@@ -61,7 +61,7 @@
       "file": "gwrc.json",
       "count": 26950,
       "hash": "1775774d5b43",
-      "fetchedAt": "2026-10-02T21:00:18.291Z",
+      "fetchedAt": "2026-10-03T19:29:14.910Z",
       "source": "https://mapping.gw.govt.nz/arcgis/rest/services/GW/Resource_Consents_P/MapServer/0"
     },
     {
