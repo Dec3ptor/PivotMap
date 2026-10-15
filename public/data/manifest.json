@@ -5,9 +5,9 @@
       "id": "BOPRC",
       "name": "Bay of Plenty Regional Council",
       "file": "boprc.json",
-      "count": 29823,
-      "hash": "51fe8bedddd9",
-      "fetchedAt": "2026-10-13T21:21:35.868Z",
+      "count": 29829,
+      "hash": "f5d02eec82c1",
+      "fetchedAt": "2026-10-15T19:56:30.146Z",
       "source": "https://gis.boprc.govt.nz/server2/rest/services/BayOfPlentyMaps/ConsentsandCompliance/MapServer/45"
     },
     {
@@ -23,9 +23,9 @@
       "id": "NRC",
       "name": "Northland Regional Council",
       "file": "nrc.json",
-      "count": 36316,
-      "hash": "8bfbed4048b8",
-      "fetchedAt": "2026-10-14T20:17:18.999Z",
+      "count": 36336,
+      "hash": "6107040cdd37",
+      "fetchedAt": "2026-10-15T19:58:06.938Z",
       "source": "https://services2.arcgis.com/J8errK5dyxu7Xjf7/arcgis/rest/services/Resource_Consents_/FeatureServer/0"
     },
     {
@@ -34,34 +34,34 @@
       "file": "hrc.json",
       "count": 10759,
       "hash": "97559402229d",
-      "fetchedAt": "2026-10-14T20:17:22.817Z",
+      "fetchedAt": "2026-10-15T19:58:11.034Z",
       "source": "https://services1.arcgis.com/VuN78wcRdq1Oj69W/ArcGIS/rest/services/OpenData_RegulatoryActivity/FeatureServer/3"
     },
     {
       "id": "WRC",
       "name": "Waikato Regional Council",
       "file": "wrc.json",
-      "count": 24780,
-      "hash": "eaa4ebebc881",
-      "fetchedAt": "2026-10-14T20:17:30.850Z",
+      "count": 24791,
+      "hash": "d4a6d0905e06",
+      "fetchedAt": "2026-10-15T19:58:20.783Z",
       "source": "https://services.arcgis.com/2bzQ0Ix3iO7MItUa/arcgis/rest/services/WDP_AUTH_ACTIVE_RESOURCE_CONSENTS_EXT/FeatureServer/0"
     },
     {
       "id": "TRC",
       "name": "Taranaki Regional Council",
       "file": "trc.json",
-      "count": 5153,
-      "hash": "65c21cb7677e",
-      "fetchedAt": "2026-10-14T20:17:32.506Z",
+      "count": 5152,
+      "hash": "e93020af4eef",
+      "fetchedAt": "2026-10-15T19:58:22.460Z",
       "source": "https://services.arcgis.com/MMPHUPU6MnEt0lEK/arcgis/rest/services/Ressource_Consents/FeatureServer/7"
     },
     {
       "id": "GWRC",
       "name": "Greater Wellington Regional Council",
       "file": "gwrc.json",
-      "count": 26976,
-      "hash": "a0de790eb6eb",
-      "fetchedAt": "2026-10-14T20:26:40.295Z",
+      "count": 26979,
+      "hash": "235c4cc2437d",
+      "fetchedAt": "2026-10-15T20:07:37.101Z",
       "source": "https://mapping.gw.govt.nz/arcgis/rest/services/GW/Resource_Consents_P/MapServer/0"
     },
     {
