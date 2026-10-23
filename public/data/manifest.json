@@ -5,9 +5,9 @@
       "id": "BOPRC",
       "name": "Bay of Plenty Regional Council",
       "file": "boprc.json",
-      "count": 29815,
-      "hash": "76d5ab2055f6",
-      "fetchedAt": "2026-10-22T20:13:18.926Z",
+      "count": 29816,
+      "hash": "846e6e7c3258",
+      "fetchedAt": "2026-10-23T19:59:39.892Z",
       "source": "https://gis.boprc.govt.nz/server2/rest/services/BayOfPlentyMaps/ConsentsandCompliance/MapServer/45"
     },
     {
@@ -23,9 +23,9 @@
       "id": "NRC",
       "name": "Northland Regional Council",
       "file": "nrc.json",
-      "count": 36349,
-      "hash": "aa05bcb0d152",
-      "fetchedAt": "2026-10-22T20:14:54.442Z",
+      "count": 36356,
+      "hash": "4b58e6d4c64d",
+      "fetchedAt": "2026-10-23T20:01:15.535Z",
       "source": "https://services2.arcgis.com/J8errK5dyxu7Xjf7/arcgis/rest/services/Resource_Consents_/FeatureServer/0"
     },
     {
@@ -34,16 +34,16 @@
       "file": "hrc.json",
       "count": 10759,
       "hash": "97559402229d",
-      "fetchedAt": "2026-10-22T20:14:59.079Z",
+      "fetchedAt": "2026-10-23T20:01:20.270Z",
       "source": "https://services1.arcgis.com/VuN78wcRdq1Oj69W/ArcGIS/rest/services/OpenData_RegulatoryActivity/FeatureServer/3"
     },
     {
       "id": "WRC",
       "name": "Waikato Regional Council",
       "file": "wrc.json",
-      "count": 24796,
-      "hash": "4884f17957a1",
-      "fetchedAt": "2026-10-22T20:15:10.762Z",
+      "count": 24794,
+      "hash": "50e2b669844c",
+      "fetchedAt": "2026-10-23T20:01:28.404Z",
       "source": "https://services.arcgis.com/2bzQ0Ix3iO7MItUa/arcgis/rest/services/WDP_AUTH_ACTIVE_RESOURCE_CONSENTS_EXT/FeatureServer/0"
     },
     {
@@ -52,7 +52,7 @@
       "file": "trc.json",
       "count": 5156,
       "hash": "d1108d89b3c1",
-      "fetchedAt": "2026-10-22T20:15:12.602Z",
+      "fetchedAt": "2026-10-23T20:01:29.923Z",
       "source": "https://services.arcgis.com/MMPHUPU6MnEt0lEK/arcgis/rest/services/Ressource_Consents/FeatureServer/7"
     },
     {
@@ -61,7 +61,7 @@
       "file": "gwrc.json",
       "count": 26980,
       "hash": "c8c965da7499",
-      "fetchedAt": "2026-10-22T20:23:59.479Z",
+      "fetchedAt": "2026-10-23T20:10:11.316Z",
       "source": "https://mapping.gw.govt.nz/arcgis/rest/services/GW/Resource_Consents_P/MapServer/0"
     },
     {
