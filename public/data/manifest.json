@@ -6,8 +6,8 @@
       "name": "Bay of Plenty Regional Council",
       "file": "boprc.json",
       "count": 29816,
-      "hash": "88268ee7632f",
-      "fetchedAt": "2026-10-24T18:51:39.486Z",
+      "hash": "40871a2625e6",
+      "fetchedAt": "2026-10-25T19:08:11.172Z",
       "source": "https://gis.boprc.govt.nz/server2/rest/services/BayOfPlentyMaps/ConsentsandCompliance/MapServer/45"
     },
     {
@@ -25,7 +25,7 @@
       "file": "nrc.json",
       "count": 36359,
       "hash": "92b413753051",
-      "fetchedAt": "2026-10-24T18:53:13.992Z",
+      "fetchedAt": "2026-10-25T19:09:47.554Z",
       "source": "https://services2.arcgis.com/J8errK5dyxu7Xjf7/arcgis/rest/services/Resource_Consents_/FeatureServer/0"
     },
     {
@@ -34,7 +34,7 @@
       "file": "hrc.json",
       "count": 10759,
       "hash": "97559402229d",
-      "fetchedAt": "2026-10-24T18:53:19.690Z",
+      "fetchedAt": "2026-10-25T19:09:51.517Z",
       "source": "https://services1.arcgis.com/VuN78wcRdq1Oj69W/ArcGIS/rest/services/OpenData_RegulatoryActivity/FeatureServer/3"
     },
     {
@@ -43,7 +43,7 @@
       "file": "wrc.json",
       "count": 24794,
       "hash": "50e2b669844c",
-      "fetchedAt": "2026-10-24T18:53:27.096Z",
+      "fetchedAt": "2026-10-25T19:09:59.561Z",
       "source": "https://services.arcgis.com/2bzQ0Ix3iO7MItUa/arcgis/rest/services/WDP_AUTH_ACTIVE_RESOURCE_CONSENTS_EXT/FeatureServer/0"
     },
     {
@@ -52,7 +52,7 @@
       "file": "trc.json",
       "count": 5155,
       "hash": "4bd12d928414",
-      "fetchedAt": "2026-10-24T18:53:28.832Z",
+      "fetchedAt": "2026-10-25T19:10:01.314Z",
       "source": "https://services.arcgis.com/MMPHUPU6MnEt0lEK/arcgis/rest/services/Ressource_Consents/FeatureServer/7"
     },
     {
@@ -61,7 +61,7 @@
       "file": "gwrc.json",
       "count": 26980,
       "hash": "c8c965da7499",
-      "fetchedAt": "2026-10-24T19:02:39.071Z",
+      "fetchedAt": "2026-10-25T19:18:50.298Z",
       "source": "https://mapping.gw.govt.nz/arcgis/rest/services/GW/Resource_Consents_P/MapServer/0"
     },
     {
