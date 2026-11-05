@@ -2,6 +2,26 @@
   "version": 1,
   "regions": [
     {
+      "id": "NRC",
+      "name": "Northland Regional Council",
+      "file": "nrc.json",
+      "count": 30293,
+      "downloaded": 36396,
+      "hash": "d847851e47ce",
+      "fetchedAt": "2026-11-05T23:35:47.356Z",
+      "source": "https://services2.arcgis.com/J8errK5dyxu7Xjf7/arcgis/rest/services/Resource_Consents_/FeatureServer/0"
+    },
+    {
+      "id": "WRC",
+      "name": "Waikato Regional Council",
+      "file": "wrc.json",
+      "count": 19964,
+      "downloaded": 24797,
+      "hash": "32e01f97c7ac",
+      "fetchedAt": "2026-11-05T23:36:04.700Z",
+      "source": "https://services.arcgis.com/2bzQ0Ix3iO7MItUa/arcgis/rest/services/WDP_AUTH_ACTIVE_RESOURCE_CONSENTS_EXT/FeatureServer/0"
+    },
+    {
       "id": "BOPRC",
       "name": "Bay of Plenty Regional Council",
       "file": "boprc.json",
@@ -11,49 +31,46 @@
       "source": "https://gis.boprc.govt.nz/server2/rest/services/BayOfPlentyMaps/ConsentsandCompliance/MapServer/45"
     },
     {
+      "id": "GDC",
+      "name": "Gisborne District Council",
+      "file": "gdc.json",
+      "count": 17155,
+      "downloaded": 23258,
+      "hash": "047cfbf1629f",
+      "fetchedAt": "2026-11-05T23:36:19.257Z",
+      "source": "https://maps.gdc.govt.nz/hosting/rest/services/Property/resource_consents_ext/MapServer/0"
+    },
+    {
       "id": "HBDC",
       "name": "Hawke's Bay Regional Council",
       "file": "hbdc.json",
-      "count": 32674,
-      "hash": "107aab50ab26",
-      "fetchedAt": "2026-04-15T01:42:00.000Z",
-      "source": "https://gis.hbrc.govt.nz/server/rest/services/ExternalServices/Regulatory/MapServer/1"
-    },
-    {
-      "id": "NRC",
-      "name": "Northland Regional Council",
-      "file": "nrc.json",
-      "count": 36396,
-      "hash": "10fd90e929f0",
-      "fetchedAt": "2026-11-05T22:09:32.873Z",
-      "source": "https://services2.arcgis.com/J8errK5dyxu7Xjf7/arcgis/rest/services/Resource_Consents_/FeatureServer/0"
-    },
-    {
-      "id": "HRC",
-      "name": "Horizons Regional Council",
-      "file": "hrc.json",
-      "count": 10759,
-      "hash": "97559402229d",
-      "fetchedAt": "2026-11-05T22:09:37.174Z",
-      "source": "https://services1.arcgis.com/VuN78wcRdq1Oj69W/ArcGIS/rest/services/OpenData_RegulatoryActivity/FeatureServer/3"
-    },
-    {
-      "id": "WRC",
-      "name": "Waikato Regional Council",
-      "file": "wrc.json",
-      "count": 24797,
-      "hash": "f13255c19898",
-      "fetchedAt": "2026-11-05T22:09:45.382Z",
-      "source": "https://services.arcgis.com/2bzQ0Ix3iO7MItUa/arcgis/rest/services/WDP_AUTH_ACTIVE_RESOURCE_CONSENTS_EXT/FeatureServer/0"
+      "count": 15412,
+      "downloaded": 33988,
+      "hash": "67af02eb2929",
+      "fetchedAt": "2026-11-05T23:35:30.365Z",
+      "source": "https://gis.hbrc.govt.nz/server/rest/services/ExternalServices/Regulatory/MapServer/1",
+      "copy": "https://hub.arcgis.com/api/v3/datasets/92e050ec6c85469293f84c8b94a807bd_1/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1",
+      "sourceDate": "2026-10-27T01:50:33.000Z"
     },
     {
       "id": "TRC",
       "name": "Taranaki Regional Council",
       "file": "trc.json",
-      "count": 5156,
-      "hash": "2ccf1a77809a",
-      "fetchedAt": "2026-11-05T22:09:46.805Z",
+      "count": 4203,
+      "downloaded": 5157,
+      "hash": "66614f393bec",
+      "fetchedAt": "2026-11-05T23:36:06.880Z",
       "source": "https://services.arcgis.com/MMPHUPU6MnEt0lEK/arcgis/rest/services/Ressource_Consents/FeatureServer/7"
+    },
+    {
+      "id": "HRC",
+      "name": "Horizons Regional Council",
+      "file": "hrc.json",
+      "count": 5094,
+      "downloaded": 10759,
+      "hash": "54ef4d8ed8d6",
+      "fetchedAt": "2026-11-05T23:35:52.584Z",
+      "source": "https://services1.arcgis.com/VuN78wcRdq1Oj69W/ArcGIS/rest/services/OpenData_RegulatoryActivity/FeatureServer/3"
     },
     {
       "id": "GWRC",
@@ -65,13 +82,54 @@
       "source": "https://mapping.gw.govt.nz/arcgis/rest/services/GW/Resource_Consents_P/MapServer/0"
     },
     {
-      "id": "GDC",
-      "name": "Gisborne District Council",
-      "file": "gdc.json",
-      "count": 22797,
-      "hash": "e72c01aba063",
-      "fetchedAt": "2026-04-15T01:42:00.000Z",
-      "source": "https://maps.gdc.govt.nz/hosting/rest/services/Property/resource_consents_ext/MapServer/0"
+      "id": "MDC",
+      "name": "Marlborough District Council",
+      "file": "mdc.json",
+      "count": 45496,
+      "downloaded": 73625,
+      "hash": "ea8937555bd0",
+      "fetchedAt": "2026-11-05T23:41:31.385Z",
+      "source": "https://gis.marlborough.govt.nz/server/rest/services/OpenData/OpenData3/MapServer/5"
+    },
+    {
+      "id": "WCRC",
+      "name": "West Coast Regional Council",
+      "file": "wcrc.json",
+      "count": 14189,
+      "downloaded": 27188,
+      "hash": "b3fe4c0bc0db",
+      "fetchedAt": "2026-11-05T23:42:17.665Z",
+      "source": "https://utility.arcgis.com/usrsvcs/servers/39c782f2da1442bda74406e716a5aa37/rest/services/Hosted/IRIS_Consents_and_Applications_External_Layer/FeatureServer/1"
+    },
+    {
+      "id": "ECAN",
+      "name": "Environment Canterbury",
+      "file": "ecan.json",
+      "count": 55460,
+      "downloaded": 117219,
+      "hash": "42c5390dccfa",
+      "fetchedAt": "2026-11-05T23:39:44.143Z",
+      "source": "https://gis.ecan.govt.nz/arcgis/rest/services/Public/Resource_Consents/MapServer/45"
+    },
+    {
+      "id": "ORC",
+      "name": "Otago Regional Council",
+      "file": "orc.json",
+      "count": 12884,
+      "downloaded": 25050,
+      "hash": "502cb7f2a6f0",
+      "fetchedAt": "2026-11-05T23:39:59.404Z",
+      "source": "https://maps.orc.govt.nz/arcgis/rest/services/ORCResourceConsents/MapServer/28"
+    },
+    {
+      "id": "ES",
+      "name": "Environment Southland",
+      "file": "es.json",
+      "count": 5546,
+      "downloaded": 7797,
+      "hash": "abcf67c33886",
+      "fetchedAt": "2026-11-05T23:40:06.470Z",
+      "source": "https://maps.es.govt.nz/server/rest/services/Public/Consents/MapServer/2"
     }
   ]
 }
