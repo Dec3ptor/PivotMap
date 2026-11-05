@@ -10,7 +10,7 @@ export const COMMON_FIELDS = [
     'PrimaryConsentHolderAddress', 'LocalAuthority', 'SiteAddress', 'Purpose', 'Subtype',
     'Category', 'WaterManagementZone', 'WaterManagementArea', 'ComplianceOfficer',
     'GrantedDate', 'LodgedDate', 'ExpiryDate', 'StatusDate', 'CapID', 'FactorySupplyNumber',
-    'PublicDocumentsLink', 'DeemedPermitted', 'GlobalID'
+    'PublicDocumentsLink', 'DeemedPermitted', 'GlobalID', 'Industry'
 ];
 
 export const DAY_MS = 24 * 60 * 60 * 1000;
@@ -89,8 +89,21 @@ export function cleanText(value) {
 }
 
 // --- Region files ---
+// Fill a link pattern like ".../consentdetails/{ConsentID}" from a consent's fields ('' when a
+// field it needs is empty). Slashes are kept as they are, the way councils write their links.
+// The data refresh (scripts/update-data.mjs) uses this too, to leave such links out of the files.
+export function fillLink(pattern, fields) {
+    let missing = false;
+    const url = String(pattern).replace(/\{(\w+)\}/g, (_, key) => {
+        const value = fields[key];
+        if (value === '' || value == null) missing = true;
+        return encodeURIComponent(value ?? '').replace(/%2F/gi, '/');
+    });
+    return missing ? '' : url;
+}
+
 // Expand a compact region file (written by scripts/update-data.mjs) into one plain object per
-// consent: { region, fields, constants, records: [[lng, lat, ...values in `fields` order]] }
+// consent: { region, fields, constants, links?, records: [[lng, lat, ...values in `fields` order]] }
 // Fields a region doesn't publish read as '' from this shared prototype.
 const EMPTY_FIELDS = Object.fromEntries(COMMON_FIELDS.map(f => [f, '']));
 
@@ -98,10 +111,12 @@ export function expandRegionData(data) {
     const region = data.region;
     const fields = data.fields || [];
     const constants = data.constants || {};
+    const links = Object.entries(data.links || {});
     return (data.records || []).map(row => {
         const p = Object.create(EMPTY_FIELDS);
         Object.assign(p, constants);
         for (let i = 0; i < fields.length; i++) p[fields[i]] = row[i + 2] ?? '';
+        for (const [key, pattern] of links) if (!p[key]) p[key] = fillLink(pattern, p);
         if (!p.GlobalID) p.GlobalID = `${region}:${p.ConsentID}`;
         p.Region = region;
         p.lng = row[0];
@@ -133,9 +148,11 @@ function cachedStatusGroup(status) {
 export function statusGroup(status) {
     const s = String(status || '').trim().toLowerCase();
     if (!s) return 'unknown';
-    if (/s\.?\s?124|existing use protection/.test(s)) return 'renewing';
-    if (/^(current|active|granted)$/.test(s) || /\bcurrent\b|not yet commenced|variation applies|deemed cp/.test(s)) return 'live';
-    if (/process|lodged|accepted|notified|on hold|proposed|awaiting|pending|appeal|decision|pre-?application|s88|deferred/.test(s)) return 'pending';
+    // Otago writes "Expired – Pending Application" for an expired consent being renewed under s124
+    if (/s\.?\s?124|existing use protection|expired\W+pending (application|renewal)/.test(s)) return 'renewing';
+    // Canterbury's "Issued - Inactive" is granted but not yet in use: still a live consent
+    if (/^(current|active|granted)$/.test(s) || /^issued\b|\bcurrent\b|not yet commenced|variation applies|deemed cp|possibly live/.test(s)) return 'live';
+    if (/process|lodged|accepted|notified|on hold|proposed|awaiting|pending|appeal|decision|pre[- ]?application|s88|deferred|hearing|suspended/.test(s)) return 'pending';
     return 'ended';
 }
 
@@ -164,21 +181,26 @@ export const DEFAULT_HIDDEN_WORK_TYPES = WORK_TYPES.filter(t => t.minor).map(t =
 const WORK_RULES = [
     ['water', /pasture cultivation \(irrigation[^|]*\| water permit/],
     ['industry', /dairy (factory|product|processing|manufactur|company)|milk (powder|processing|treatment)|meat (works|processing|product)|abattoir|freezing works|\brendering\b|pulp (mill|and paper)|paper mill|\bsawmill|timber (treatment|processing)|fertili[sz]er (works|plant|manufactur)|chemical (plant|manufactur|complex)|ammonia|\burea\b|petrochemical|refinery|cement (works|plant|manufactur)|steel ?works|smelter|winery waste|tannery|fellmonger|coolstore|vehicle wash|crematori|cremation/],
-    ['farm', /farm animal effluent|animal (waste|effluent)|dairy ?shed|din exceeding|luc exceedance|production land use|nitrogen (leach|loss|discharge)|(dairy|dairying|piggery|\bpigs?\b|poultry|cow|cattle|farm|feed ?pad)\b[^|]{0,60}(effluent|wastewater|odour|waste\b)|effluent[^|]{0,40}(dairy|farm|pasture|cow|cattle)|\bpiggery\b|poultry (farm|shed)|intensive farming|feed ?pad|wintering (barn|pad)|stand-?off pad|\bfde\b|^discharge \| dairy/],
+    ['farm', /farm animal effluent|animal (waste|effluent)|dairy ?shed|din exceeding|luc exceedance|production land use|nitrogen (leach|loss|discharge)|winter graz|stock ?holding (area|facilit)|(farm|dairy|animal|agricultural|cows?)[^|]{0,40}effluent (storage|pond)|effluent (storage|pond)[^|]{0,60}(farm|dairy|cows?|animal)|(^|\| )(new |existing )?effluent storage( \||$)|(^|\| )farm(ing)?( \||;|$)|(dairy|dairying|piggery|\bpigs?\b|poultry|cow|cattle|farm|feed ?pad)\b[^|]{0,60}(effluent|wastewater|odour|waste\b)|effluent[^|]{0,40}(dairy|farm|pasture|cow|cattle)|\bpiggery\b|poultry (farm|shed)|intensive farming|feed ?pad|wintering (barn|pad)|stand-?off pad|\bfde\b|^discharge \| dairy/],
     ['water', /municipal water|(municipal|community|town|public|council)[^|]{0,30}water (supply|take|treatment)|water supply - (municipal|potable)|public water supply|drinking water|municipal or drinking water|municipal and \/ or drinking/],
-    ['wastewater', /municipal (sewage|wastewater|effluent)|township|community (sewage|wastewater|scheme)|(wastewater|sewage|effluent) treatment (plant|system|ponds?)|\bwwtp\b|oxidation pond|treatment ponds?/],
+    ['wastewater', /municipal (sewage|wastewater|effluent)|township[^|]{0,40}(sewage|wastewater|effluent)|(sewage|wastewater|effluent)[^|]{0,60}township|community (sewage|wastewater|scheme)|(wastewater|sewage|effluent) treatment (plant|system|ponds?)|\bwwtp\b|oxidation pond|treatment ponds?/],
+    // A take for irrigation, stock or business use is real water work even when it also supplies a house,
+    // unless the consent is for drilling the bore itself.
+    ['water', /^(?![^]*\b(install|construct|drill)[^|]{0,40}\b(bores?|wells?)\b)[^]*\b(take|takes|taking(?! place)|abstract)\b[^|]{0,120}\b(irrigat|stock|frost|dairy|milk|commercial|horticult|orchard|vineyard|industr|community|municipal|golf)/],
     ['minor', /mooring|whitebait|boat ?shed|boat ?ramp|slipway|pontoon|\bjett(y|ies)\b|domestic|\boset\b|on-?site (waste ?water|sewage|effluent)|septic|single (property|dwelling)|residential - single|dwelling|lifestyle block|household|land - well|luc - bores|bore (construction|consent)|(install|construct|drill)[^|]{0,40}\bbores?\b|boreholes?|bore, core sample|monitoring \/ investigation|hydrological (sampling|monitoring)|\bbores? \|/],
     ['wastewater', /waste ?water|sewage|sewerage|\bsewer|effluent|septage|sludge|biosolid|blackwater|trade waste/],
+    ['land', /\bfrost ?(fans?|boss)\b/],
     ['stormwater', /storm ?water|drainage|flood pump/],
-    ['forestry', /forest|afforest|harvest|plantation|woodlot|logging|\blogs\b|replanting|clear ?fell|fell(ing)? (exotic )?trees|landings|cable haul|exotic trees|radiata|\bpines?\b/],
-    ['energy', /geothermal|\bhydro\b|hydro-?electric|power (station|scheme|generation)|electricity generation|wind farm|solar farm|hydrocarbon|petroleum|\boil\b|natural gas|gas (well|field|pipeline|production)|well ?site|production station|\bmining\b|\bmines?\b|quarr(y|ies|ying)|aggregate|mineral|\bcoal\b/],
+    ['forestry', /forest|afforest|plantation|woodlot|logging|\blogs\b|replanting|clear ?fell|fell(ing)? (exotic )?trees|landings|cable haul|exotic trees|radiata|\bpines?\b|(tree|timber|log|pine)s?[^|]{0,20}harvest|harvest(ing)? (of )?(the )?(trees|timber|logs|pines?|plantation)|(^|\| |\()harvesting( \||\)|$)/],
+    ['energy', /geothermal|\bhydro\b|hydro-?electric|power (station|scheme|generation)|electricity generation|wind farm|solar farm|hydrocarbon|petroleum|\boil\b|natural gas|gas (well|field|pipeline|production)|well ?site|production station|\bmining\b(?! privilege)|\bmines?\b|quarr(y|ies|ying)|aggregate|mineral|\bcoal\b/],
     // Diversions and dams (without a take) are river works, even when filed under "water use".
     ['rivers', /^(?!.*\b(take|takes|taking|abstract))[^]*(diversion|\bdivert|\bdams?\b|damming|\bweir)/],
-    ['water', /water take|take (and use )?(of )?(ground|surface)?\s?water|(ground|surface) ?water take|groundwater|take water|take and use|water use|irrigat|frost|stock ?water|water supply|potable|abstract|take up to|\btake\b[^|]{0,30}cubic|wp - (ground|surface) ?water|water - take/],
+    ['water', /water take|take (and use )?(of )?(ground|surface)?\s?water|(ground|surface) ?water take|groundwater|take water|take and use|water use|irrigat|frost(?! ?(fan|boss))|stock ?water|water supply|potable|abstract|take up to|\btake\b[^|]{0,30}cubic|wp - (ground|surface) ?water|water - take/],
     ['coastal', /coastal|\bcma\b|marine|harbou?r|wharf|wharves|seawall|sea wall|dredg|estuar|foreshore|\bport\b|beach|sand (extraction|removal)|aquaculture|mussel|oyster|\bcp - /],
     ['roads', /\broading\b|roadworks|state highway|\bsh ?\d+\b|motorway|expressway|\brail(way)?\b|transport public networks|transport services - road|\broad (works|remedial|reserve|construction|formation|widening|realignment|upgrade|maintenance|repairs?|reinstatement|network|corridor|bridge|culvert|crossing|resilience|safety)|(construct|form|upgrade|widen|realign|repair|maintain|build|seal|reinstate)[a-z ]{0,20}\broads?\b|bypass|interchange|cycleway/],
     ['rivers', /river|stream|\blake\b|\bbeds?\b|culvert|bridge|\bford\b|weir|\bdams?\b|damming|divers|divert|channel|flood (protection|management|control)|stop ?bank|gravel|shingle|reclamation|wetland|watercourse|streamwork|river crossing|erosion protection|bank stabilisation|hazard mitigation|piping|\bpipes?\b/],
-    ['industry', /industr|manufactur|processing|factory|discharge to air|air discharge|\bair\b|odour|emission|\bdust\b|incinerat|boiler|abattoir|\bmeat\b|timber|landfill|refuse|transfer station|compost|cleanfill|leachate|contaminant|solid waste|waste management|agrichemical|spray|pest control|\b1080\b|monofluoroacetate|diquat|herbicide|pesticide|poison|blasting|abrasive/],
+    ['land', /\bsediment/],
+    ['industry', /industr|manufactur|processing|factory|discharge to air|air discharge|\bair\b|odour|emission|\bdust\b|hazardous (storage|substance|goods)|contaminated water|incinerat|boiler|abattoir|\bmeat\b|timber|landfill|refuse|transfer station|compost|cleanfill|leachate|contaminant|solid waste|waste management|agrichemical|spray|pest control|\b1080\b|monofluoroacetate|diquat|herbicide|pesticide|poison|blasting|abrasive/],
     ['water', /water permit|\bwp - /],
     ['land', /earthwork|excavat|disturb|vegetation|clearance|\bfill(ing)?\b|contaminated (land|site)|subdivision|land use|land development|retaining|erosion|recontour|\btrack|impervious|building|construct|structure|habitat|production land|use-erect/]
 ];
@@ -189,7 +211,7 @@ const WORK_RULES = [
 const INDUSTRY_RULES = [
     ['minor', /residential - single|single property|domestic residence|lifestyle block|camping ground|rse accommodation|domestic effluent discharge - (other|camp ground|commercial)|mooring|jett(y|ies)|boat ?ramp|boat ?shed|whitebait/,
         ['wastewater', 'water', 'stormwater', 'land', 'rivers', 'coastal', 'other']],
-    ['farm', /dairying|dairy farm|piggery|poultry|intensive farming/, ['industry', 'wastewater', 'other']],
+    ['farm', /dairying|dairy farm|dairy (support|- expanded)|winter grazing|piggery|poultry|intensive farming/, ['industry', 'wastewater', 'land', 'other']],
     ['wastewater', /effluent discharge - municipal/, ['industry', 'minor', 'other']],
     ['forestry', /forest/, ['rivers', 'land', 'minor', 'water', 'energy', 'roads', 'other']],
     ['roads', /transport services - road|transport public networks|roading|\broads?\b|highway|\brail/, ['rivers', 'land', 'minor', 'other']],
@@ -212,15 +234,25 @@ const GDC_CODES = {
 const GDC_CODE_TYPES = Object.fromEntries(Object.entries(GDC_CODES).flatMap(([type, codes]) => codes.map(c => [c, type])));
 
 // Which fields describe the activity, and which describe the industry, differs by council.
+// Councils that publish the industry separately (Southland) have it in `Industry`.
 const FIELD_ROLES = {
     HBDC: { activity: ['Purpose', 'Subtype'], industry: ['Category'] },
     HRC: { activity: ['Purpose', 'Subtype'], industry: ['Category'] },
     WRC: { activity: ['Category', 'Subtype'], industry: ['Purpose'] },
-    default: { activity: ['Subtype', 'Category', 'Purpose'], industry: [] }
+    default: { activity: ['Subtype', 'Category', 'Purpose'], industry: ['Industry'] }
 };
 
+// Catch-all category names that would otherwise trip the rules: West Coast files all land
+// disturbance under "Tracking/Logging/…" and writes "Contaminants to Water (other than CMA)".
+const GENERIC_PHRASES = [
+    [/tracking\/logging\/land clearing\/land disturbance/g, 'land disturbance'],
+    [/\(other than cma\)/g, '']
+];
+
 function joinFields(p, fields) {
-    return fields.map(f => p[f]).filter(v => v && v !== 'NA').join(' | ').toLowerCase();
+    let text = fields.map(f => p[f]).filter(v => v && v !== 'NA').join(' | ').toLowerCase();
+    for (const [re, replacement] of GENERIC_PHRASES) text = text.replace(re, replacement);
+    return text;
 }
 
 function firstRule(rules, text) {
@@ -358,14 +390,26 @@ function isFreshwaterText(text) {
 // Bay has 6,000 "Orchard | Water Supply - Irrigation" consents), so short descriptions are cached.
 const activityCache = new Map();
 function describeActivity(p) {
-    const key = `${p.Region}\u0000${p.Subtype}\u0000${p.Category}\u0000${p.Purpose}`;
+    const key = `${p.Region}\u0000${p.Subtype}\u0000${p.Category}\u0000${p.Purpose}\u0000${p.Industry}`;
     let hit = activityCache.get(key);
     if (!hit) {
         const text = joinFields(p, ['Subtype', 'Category', 'Purpose']);
-        hit = { work: classifyWork(p), freshwater: isFreshwaterText(text), holder: inferHolderType(text) };
+        hit = {
+            work: classifyWork(p), freshwater: isFreshwaterText(text), holder: inferHolderType(text),
+            onsite: ONSITE_WASTEWATER.test(text)
+        };
         if (key.length < 200) activityCache.set(key, hit);
     }
     return hit;
+}
+
+// Canterbury files every septic tank as "Human Effluent"; a council's treatment plant is too.
+const ONSITE_WASTEWATER = /human effluent/;
+
+// Wastewater work for a person or family trust is a household septic system, as is a Canterbury
+// "Human Effluent" consent held by anyone but a council or utility: small and domestic.
+function householdWastewater(work, holderType, onsite) {
+    return work === 'wastewater' && (holderType === 'private' || (onsite && holderType !== 'public' && holderType !== 'utility'));
 }
 
 // --- Enrichment ---
@@ -381,7 +425,7 @@ export function enrich(p, today = todayNumber()) {
     else if (WITHHELD_HOLDER.test(p.PrimaryConsentHolder)) holder = { type: 'private', inferred: false };
     p._holderType = holder.type;
     p._holderGuess = holder.inferred;
-    p._work = activity.work;
+    p._work = householdWastewater(activity.work, holder.type, activity.onsite) ? 'minor' : activity.work;
     p._status = cachedStatusGroup(p.Status);
 
     const expiryDay = dayNumber(p.ExpiryDate);
@@ -462,11 +506,16 @@ export const SORTS = [
     { id: 'region', label: 'By council' }
 ];
 
-const compareText = (a, b) => (a || '￿').localeCompare(b || '￿', 'en', { sensitivity: 'base' });
+// One shared collator: localeCompare with options builds a new one on every call, which makes
+// sorting a few hundred thousand consents take seconds.
+const COLLATOR = new Intl.Collator('en', { sensitivity: 'base' });
+const compareText = (a, b) => COLLATOR.compare(a || '\uffff', b || '\uffff');
+// Plain comparison for ASCII values like ISO dates and consent IDs.
+const compareCodes = (a, b) => (a < b ? -1 : a > b ? 1 : 0);
 // Consents with no expiry date sort after every dated one.
 const expiryKey = p => (p._expiry ? p._expiry : '9999-99-99');
 
-const byConsentId = (a, b) => String(a.ConsentID).localeCompare(String(b.ConsentID));
+const byConsentId = (a, b) => compareCodes(String(a.ConsentID), String(b.ConsentID));
 // Current consents with a coming expiry first, then current ones without a date or past it,
 // then everything no longer current (most recently ended first).
 function currencyRank(p) {
@@ -474,15 +523,15 @@ function currencyRank(p) {
     return 3;
 }
 const bySoonest = (a, b) => currencyRank(a) - currencyRank(b)
-    || (currencyRank(a) === 3 ? expiryKey(b).localeCompare(expiryKey(a)) : expiryKey(a).localeCompare(expiryKey(b)))
+    || (currencyRank(a) === 3 ? compareCodes(expiryKey(b), expiryKey(a)) : compareCodes(expiryKey(a), expiryKey(b)))
     || compareText(a._holder, b._holder) || byConsentId(a, b);
-const byLatest = (a, b) => currencyRank(a) - currencyRank(b) || expiryKey(b).localeCompare(expiryKey(a))
+const byLatest = (a, b) => currencyRank(a) - currencyRank(b) || compareCodes(expiryKey(b), expiryKey(a))
     || compareText(a._holder, b._holder) || byConsentId(a, b);
 const COMPARATORS = {
     soonest: bySoonest,
     latest: byLatest,
     holder: (a, b) => compareText(a._holder, b._holder) || bySoonest(a, b),
-    region: (a, b) => a.Region.localeCompare(b.Region) || bySoonest(a, b)
+    region: (a, b) => compareCodes(a.Region, b.Region) || bySoonest(a, b)
 };
 
 // Sorts in place and returns the array.
@@ -508,7 +557,7 @@ export function groupByHolder(records) {
         if (p._expiry && (!g.soonest || p._expiry < g.soonest._expiry)) g.soonest = p;
     }
     const list = [...groups.values()].sort((a, b) =>
-        b.count - a.count || expiryKey(a.soonest || {}).localeCompare(expiryKey(b.soonest || {})) || compareText(a.name, b.name));
+        b.count - a.count || compareCodes(expiryKey(a.soonest || {}), expiryKey(b.soonest || {})) || compareText(a.name, b.name));
     return { holders: list, unnamed };
 }
 

@@ -36,9 +36,15 @@ export function plural(count, singular, pluralForm = `${singular}s`) {
     return `${formatNumber(count)} ${count === 1 ? singular : pluralForm}`;
 }
 
-// "Bay of Plenty Regional Council" → "Bay of Plenty"
+// "Bay of Plenty Regional Council" → "Bay of Plenty", "Environment Canterbury" → "Canterbury"
 export function councilShortName(name) {
-    return String(name || '').replace(/\s+(Regional|District|City)\s+Council$/i, '').trim();
+    return String(name || '').replace(/\s+(Regional|District|City)\s+Council$/i, '').replace(/^Environment\s+/i, '').trim();
+}
+
+// ['A', 'B', 'C'] → "A, B and C"
+export function listText(items) {
+    const list = items.filter(Boolean);
+    return list.length > 1 ? `${list.slice(0, -1).join(', ')} and ${list[list.length - 1]}` : (list[0] || '');
 }
 
 // Council text is often ALL CAPS; make it readable.

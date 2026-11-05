@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
     addMonthsIso, classifyHolder, classifyWork, countStages, csvEscape, dayNumber, describeTimeLeft,
-    enrich, expandRegionData, filterConsents, freshwaterCapDate, groupByHolder, lodgeByDate,
+    enrich, expandRegionData, fillLink, filterConsents, freshwaterCapDate, groupByHolder, lodgeByDate,
     lodgementAdvice, sortConsents, statusGroup, todayNumber, toCsv
 } from '../public/js/consents.js';
 
@@ -43,9 +43,28 @@ describe('statusGroup', () => {
             Current: 'live', 'Not yet commenced': 'live', 'Variation Applies': 'live', 'Current - S125 Review pre IRIS': 'live',
             'Expired s124': 'renewing', 'Expired - S.124 Protection': 'renewing', 'Existing Use Protection Applies (s124)': 'renewing',
             Processing: 'pending', 'On Hold': 'pending', 'Under Appeal': 'pending',
-            Expired: 'ended', Surrenderred: 'ended', 'Lapsed (s125)': 'ended', Superseded: 'ended', '': 'unknown'
+            Expired: 'ended', Surrenderred: 'ended', 'Lapsed (s125)': 'ended', Superseded: 'ended', '': 'unknown',
+            // Canterbury, Otago, Marlborough, West Coast
+            'Issued - Inactive': 'live', 'Issued - s124 Continuance': 'renewing', 'Possibly Live': 'live',
+            'Expired – Pending Application': 'renewing', 'Current - Pending Surrender': 'live', 'Application at Hearing': 'pending',
+            'Application in process': 'pending', 'Pre application': 'pending', Replaced: 'ended', Withdrawn: 'ended', Refused: 'ended'
         };
         for (const [status, group] of Object.entries(cases)) assert.equal(statusGroup(status), group, status);
+    });
+});
+
+describe('region files', () => {
+    it('rebuild links from a pattern, keeping slashes and escaping the rest', () => {
+        assert.equal(fillLink('https://x.test/c?id={ProjectNumber}', { ProjectNumber: '7/00/0003' }), 'https://x.test/c?id=7/00/0003');
+        assert.equal(fillLink('https://x.test/{ConsentID}', { ConsentID: '20169.0.01-DC+ 2' }), 'https://x.test/20169.0.01-DC%2B%202');
+        assert.equal(fillLink('https://x.test/{ConsentID}', { ConsentID: '' }), '');
+        const [p, q] = expandRegionData({
+            region: 'ECAN', fields: ['ConsentID', 'PublicDocumentsLink'], constants: {},
+            links: { PublicDocumentsLink: 'https://www.ecan.govt.nz/data/consent-search/consentdetails/{ConsentID}' },
+            records: [[172, -43, 'CRC150783', ''], [172, -43, 'CRC1', 'https://elsewhere.test/CRC1']]
+        });
+        assert.equal(p.PublicDocumentsLink, 'https://www.ecan.govt.nz/data/consent-search/consentdetails/CRC150783');
+        assert.equal(q.PublicDocumentsLink, 'https://elsewhere.test/CRC1');
     });
 });
 
@@ -87,7 +106,27 @@ describe('classifyWork', () => {
         ['GWRC', 'Discharge', 'DP - DISCHARGE TO AIR', 'to discharge contaminants to air from a crematorium', 'industry'],
         ['GWRC', 'Water Use', 'WP - SURFACE WATER DIVERSION', 'to permanently divert the Wainuiomata River around rock riprap set in cement', 'rivers'],
         ['GWRC', 'Water Use', 'WP - GROUNDWATER TAKE', 'to take groundwater for irrigation', 'water'],
-        ['BOPRC', 'Pre-Application', 'NA', '', 'other']
+        ['BOPRC', 'Pre-Application', 'NA', '', 'other'],
+        ['ECAN', 'Water Permit (s14)', 'Water Take/Use; Irrigation Area', 'Take Groundwater', 'water'],
+        ['ECAN', 'Land Use Consent (s9)', 'Farm', 'Farming', 'farm'],
+        ['ECAN', 'Discharge Permit (s15)', 'Dairy Effluent', 'Discharge Contaminant into Land to Water', 'farm'],
+        ['ECAN', 'Land Use Consent (s9)', 'Hazardous Storage', 'Use Land', 'industry'],
+        ['ECAN', 'Discharge Permit (s15)', 'Stormwater Industrial', 'Discharge Contaminant into Land to Water', 'stormwater'],
+        ['ORC', 'Land Use Consent - Intensive Winter Graz', '', 'Use of land for intensive winter grazing', 'farm'],
+        ['ORC', 'Discharge to Land Permit', '', 'To discharge contaminants to land for the purpose of undertaking intensive winter grazing', 'farm'],
+        ['ORC', 'Surface Water Take Permit', '', 'To take and use water for the purpose of water harvesting and storage', 'water'],
+        ['ORC', 'Surface Water Take Permit', '', 'To take and use water, previously authorised by mining privilege 123, for irrigation', 'water'],
+        ['ORC', 'Groundwater Take Permit', '', 'To take and use groundwater for the purpose of providing water to the Mosgiel Township', 'water'],
+        ['ORC', 'Groundwater Take Permit', '', 'To take up to 170,000 litres per day from a bore for domestic supply and stock water', 'water'],
+        ['ORC', 'Bore Construction Consent', '', 'To construct a bore for the purpose of accessing groundwater', 'minor'],
+        ['ORC', 'Discharge to Land Permit', '', 'To discharge sediment to land for the purpose of a residential development', 'land'],
+        ['MDC', 'Land Use - Activity', '', 'To install and commission twenty two (22) FrostBoss C49 frost fans to protect grapes before harvest', 'land'],
+        ['MDC', 'Coastal Permit - Marine Farm', '', 'To establish a marine farm for the farming and harvesting of mussels', 'coastal'],
+        ['MDC', 'Land Use - Bore', '', 'To install a bore and take water from the Taylor River gravels for irrigation', 'minor'],
+        ['WCRC', 'Land Use Consent', 'Tracking/Logging/Land Clearing/Land Disturbance', 'To undertake earthworks associated with alluvial gold mining', 'energy'],
+        ['WCRC', 'Land Use Consent', 'Tracking/Logging/Land Clearing/Land Disturbance', 'To undertake logging and harvesting of plantation forest', 'forestry'],
+        ['WCRC', 'Discharge Permit', 'Contaminants to Water (other than CMA)', 'To discharge treated sewage effluent from the Hokitika wastewater treatment plant', 'wastewater'],
+        ['TRC', 'Water Permit', 'Take Surface Water', 'To divert, take and use water from Lake Mangamahoe via a tunnel and penstocks for hydro-electric power generation', 'energy']
     ];
     for (const [Region, Subtype, Category, Purpose, expected] of cases) {
         it(`${Region}: ${Purpose || Subtype} → ${expected}`, () => {
@@ -167,6 +206,17 @@ describe('enrich', () => {
         const network = consent({ Status: 'Current', PrimaryConsentHolder: 'Tauranga City Council', Subtype: 'Discharge', Category: 'Water', Purpose: 'discharge treated wastewater from the Te Maunga wastewater treatment plant', ExpiryDate: '2027-06-30' });
         assert.equal(network._work, 'wastewater');
         assert.equal(network._firm, 'wastewater');
+    });
+
+    it('treats household septic systems as small and domestic', () => {
+        const septic = { Region: 'ECAN', Status: 'Current', Subtype: 'Discharge Permit (s15)', Category: 'Human Effluent', Purpose: 'Discharge Contaminant into Land to Water' };
+        assert.equal(consent({ ...septic, PrimaryConsentHolder: 'J B & T R Downs' })._work, 'minor');
+        assert.equal(consent({ ...septic, PrimaryConsentHolder: 'Smith Farms Limited' })._work, 'minor');
+        assert.equal(consent({ ...septic, PrimaryConsentHolder: 'Selwyn District Council' })._work, 'wastewater');
+        // Elsewhere, wastewater held by a person is a household system; by a company it stays wastewater
+        const discharge = { Status: 'Current', Subtype: 'Discharge', Category: 'Land', Purpose: 'discharge treated wastewater to land' };
+        assert.equal(consent({ ...discharge, PrimaryConsentHolder: 'P and J McCarthy' })._work, 'minor');
+        assert.equal(consent({ ...discharge, PrimaryConsentHolder: 'Mount Maunganui Holiday Park Limited' })._work, 'wastewater');
     });
 });
 

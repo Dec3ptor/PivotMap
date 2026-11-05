@@ -11,12 +11,14 @@ import {
 import { formatArea, geometryBounds, lookupProperty, pointInGeometry } from './property.js';
 import { PROPERTY_MIN_ZOOM, createMap } from './map.js';
 import { createShortlist } from './shortlist.js';
-import { councilShortName, escapeHtml, formatDate, formatNumber, formatTimestamp, plural, readableText, safeUrl, truncate } from './format.js';
+import { councilShortName, escapeHtml, formatDate, formatNumber, formatTimestamp, listText, plural, readableText, safeUrl, truncate } from './format.js';
 
 const DATA_DIR = 'data/';
 const PREFS_KEY = 'pivotmap.prefs.v1';
 const HINT_KEY = 'pivotmap.mapHintDismissed';
 const STALE_AFTER_DAYS = 3;
+// A council's open-data copy (used when its own server can't be reached) is refreshed less often.
+const STALE_COPY_AFTER_DAYS = 14;
 const PAGE_SIZE = 60;
 const SITE_RADIUS_M = 60;        // "other consents at this site"
 const NEARBY_RADIUS_M = 200;     // "nearby" on the property panel
@@ -445,10 +447,13 @@ function workMenu() {
 function holdersMenu() {
     const counts = countsBy('_holderType', { holderTypes: null });
     const selected = state.filters.holderTypes;
-    const named = state.councils.filter(c => c.holders).map(c => c.short);
+    const unnamed = state.councils.filter(c => !c.error && !c.holders).map(c => c.short);
+    const note = unnamed.length
+        ? `${listText(unnamed)} ${unnamed.length === 1 ? "doesn't" : "don't"} publish holder names, so for ${unnamed.length === 1 ? 'its' : 'their'} consents the type is a best guess from what the consent is for.`
+        : 'Holder types come from the names each council publishes.';
     return `<div class="menu-quick"><button type="button" data-quick="all">Select all</button><button type="button" data-quick="none">Clear</button></div>
         ${HOLDER_TYPES.map(t => checkRow({ name: 'holder', value: t.id, checked: !selected || selected.has(t.id), title: t.label, count: counts.get(t.id) || 0 })).join('')}
-        <p class="menu-note">Only ${escapeHtml(named.join(' and ') || 'some councils')} publish holder names. For other councils the type is a best guess from what the consent is for.</p>`;
+        <p class="menu-note">${escapeHtml(note)}</p>`;
 }
 
 function moreMenu() {
@@ -570,8 +575,10 @@ function shortPurpose(p, max = 140) {
     return truncate(readableText(cleanText(p.Purpose)), max);
 }
 
-// Hawke's Bay and Horizons put the holder's industry in Category, not the activity.
+// Hawke's Bay and Horizons put the holder's industry in Category, not the activity; Southland
+// publishes it separately (Industry).
 const INDUSTRY_IN_CATEGORY = new Set(['HBDC', 'HRC']);
+const industryOf = p => cleanText(p.Industry || (INDUSTRY_IN_CATEGORY.has(p.Region) ? p.Category : ''));
 
 // Council consent types like "Resource Consent" or Gisborne's two-letter codes say little.
 function typeLine(p) {
@@ -676,8 +683,8 @@ function consentsListHtml() {
 
 function holdersListHtml() {
     const { holders, unnamed } = groupByHolder(state.results);
-    const named = state.councils.filter(c => c.holders).map(c => c.short).join(' and ');
-    const note = `<p class="list-note">Holders with the most consents in your selection. Names come from ${escapeHtml(named || 'the councils that publish them')}${unnamed ? `; ${plural(unnamed, 'consent')} here ha${unnamed === 1 ? 's' : 've'} no published holder` : ''}.</p>`;
+    const silent = state.councils.filter(c => !c.error && !c.holders).map(c => c.short);
+    const note = `<p class="list-note">Holders with the most consents in your selection${unnamed ? `. ${plural(unnamed, 'consent')} here ha${unnamed === 1 ? 's' : 've'} no published holder${silent.length ? ` (${escapeHtml(listText(silent))} don't publish names)` : ''}` : ''}.</p>`;
     if (!holders.length) return note + emptyState('fa-users-slash', 'No named holders', 'None of the consents in your selection have a published holder name.');
     const cards = holders.slice(0, state.shown).map(h => {
         const soon = h.soonest;
@@ -773,9 +780,10 @@ function consentsNear(lat, lng, metres) {
 // Current consents first (soonest expiry), then the rest (most recent first).
 function byRelevance(a, b) {
     const live = x => (x._status === 'live' || x._status === 'renewing' ? 0 : 1);
+    const order = (x, y) => (x < y ? -1 : x > y ? 1 : 0); // ISO dates compare as plain strings
     return live(a) - live(b) || (live(a) === 0
-        ? (a._expiry || '9999').localeCompare(b._expiry || '9999')
-        : (b._expiry || '').localeCompare(a._expiry || ''));
+        ? order(a._expiry || '9999', b._expiry || '9999')
+        : order(b._expiry || '', a._expiry || ''));
 }
 
 function miniList(records, max = 12) {
@@ -974,7 +982,8 @@ const EXTRA_FIELD_LABELS = {
     WorkflowID: 'Workflow ID', AuthPrimaryIndustry: 'Primary industry', ActPrimaryIndustry: 'Activity industry',
     AuthSecondaryIndustry: 'Secondary industry', ActSecondaryIndustry: 'Secondary activity industry',
     AuthorisationLegal1: 'Legal description', AuthorisationLegal2: 'Legal description (2)', WaterMeterRequired: 'Water meter required',
-    WaterMeterInstalled: 'Water meter installed', DateWaterMeterRequired: 'Water meter required by', WellNumber: 'Well number'
+    WaterMeterInstalled: 'Water meter installed', DateWaterMeterRequired: 'Water meter required by', WellNumber: 'Well number',
+    Industry: 'Industry'
 };
 
 function allFieldsHtml(p) {
@@ -1017,7 +1026,7 @@ function renderConsentSheet(p) {
         ['Council', escapeHtml(councilName(p.Region, false))],
         ['Status', escapeHtml(cleanText(p.Status))],
         ['Consent type', escapeHtml(typeLine(p))],
-        ['Industry', INDUSTRY_IN_CATEGORY.has(p.Region) ? escapeHtml(cleanText(p.Category)) : ''],
+        ['Industry', escapeHtml(industryOf(p))],
         ['Granted', formatDate(p.GrantedDate)],
         ['Expires', p._expiry ? formatDate(p._expiry) : ''],
         ['Lodge by (s124)', p._expiry && p._status === 'live' ? formatDate(lodgeByDate(p)) : ''],
@@ -1279,14 +1288,20 @@ function exportCsv(records, name) {
 }
 
 // --- Data sources ---
+// When the council's data was last refreshed: the copy's own date when the data came from an
+// open-data copy (sourceDate), otherwise when the daily download last succeeded.
+function dataDate(council) {
+    return council.sourceDate || council.fetchedAt || '';
+}
+
 function daysSinceUpdate(council) {
-    const d = council.fetchedAt ? new Date(council.fetchedAt) : null;
+    const d = dataDate(council) ? new Date(dataDate(council)) : null;
     return d && !Number.isNaN(d.getTime()) ? state.today - todayNumber(d) : null;
 }
 
 function isStale(council) {
     const days = daysSinceUpdate(council);
-    return days != null && days > STALE_AFTER_DAYS;
+    return days != null && days > (council.sourceDate ? STALE_COPY_AFTER_DAYS : STALE_AFTER_DAYS);
 }
 
 function renderDataPanel() {
@@ -1299,12 +1314,13 @@ function renderDataPanel() {
         let note = '';
         if (c.error) note = '<span class="data-failed">Failed to load in your browser</span>';
         else if (isStale(c)) note = `<span class="data-stale"><i class="fas fa-triangle-exclamation"></i> Not refreshed for ${formatNumber(daysSinceUpdate(c))} days — the council's service isn't answering the daily download.</span>`;
+        else if (c.sourceDate) note = `<div class="muted" style="font-size:12px">The council's server can't be reached, so this is its open-data copy on ArcGIS Hub, which can be a few days behind.</div>`;
         const features = [c.holders ? 'holder names' : '', c.expiries ? '' : 'no expiry dates'].filter(Boolean).join(', ');
         const name = safeUrl(c.source) ? `<a href="${escapeHtml(c.source)}" target="_blank" rel="noopener">${escapeHtml(c.name)}</a>` : escapeHtml(c.name);
         return `<tr><td>${name}${features ? `<div class="muted" style="font-size:12px">${escapeHtml(features)}</div>` : ''}${note}</td>
-            <td class="num">${c.error ? '—' : formatNumber(c.loaded)}</td><td class="num">${formatTimestamp(c.fetchedAt) || '—'}</td></tr>`;
+            <td class="num">${c.error ? '—' : formatNumber(c.loaded)}</td><td class="num">${formatTimestamp(dataDate(c)) || '—'}</td></tr>`;
     }).join('');
-    $('#dataBody').innerHTML = `<p class="muted" style="font-size:13px">Consents are downloaded from each council's public map service every day. Check important details with the council before relying on them.</p>
+    $('#dataBody').innerHTML = `<p class="muted" style="font-size:13px">Consents are downloaded from each council's public map service every day. Consents that ended more than 10 years ago are left out. Check important details with the council before relying on them.</p>
         <table class="data-table"><thead><tr><th>Council</th><th class="num">Consents</th><th class="num">Updated</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 

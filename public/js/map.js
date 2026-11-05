@@ -11,7 +11,8 @@ import { escapeHtml, formatDate, readableText, truncate } from './format.js';
 const LINZ_BASEMAPS_KEY = 'd01hep5551e30kxb7w85hck49tp';
 export const PROPERTY_MIN_ZOOM = 14;   // map clicks look up the property from here in
 export const BOUNDARY_MIN_ZOOM = 17;   // parcel outlines are drawn from here in
-const NORTH_ISLAND = [[-41.75, 172.6], [-34.35, 178.7]];
+// Mainland New Zealand, Stewart Island to Cape Reinga
+const NEW_ZEALAND = [[-47.3, 166.4], [-34.4, 178.6]];
 const MAX_BOUNDARY_TILES = 24;
 const BOUNDARY_CONCURRENCY = 4;
 const BOUNDARY_CACHE_SIZE = 120;
@@ -58,8 +59,8 @@ export function createMap(element, {
     const map = L.map(element, { preferCanvas: true, minZoom: 5, maxZoom: 20, zoomControl: true });
     // A map with no size (e.g. hidden) can't animate or fit bounds, so it jumps instead.
     const hasSize = () => map.getSize().x > 0 && map.getSize().y > 0;
-    if (hasSize()) map.fitBounds(NORTH_ISLAND);
-    else map.setView([-38.9, 175.7], 6);
+    if (hasSize()) map.fitBounds(NEW_ZEALAND);
+    else map.setView([-41.0, 173.0], 5);
     map.attributionControl.addAttribution(PROPERTY_ATTRIBUTION);
 
     // Panes keep parcel outlines under the consent markers.
