@@ -56,7 +56,7 @@
 <body>
 <div class="page">
 <h1>NZ Resource Consent Databases — Schema Reference</h1>
-<p class="subtitle">Generated: April 2026 &nbsp;|&nbsp; For internal review of available data fields per regional council source</p>
+<p class="subtitle">Generated: April 2026, updated November 2026 &nbsp;|&nbsp; For internal review of available data fields per regional council source</p>
 
 <div class="toc">
   <h2>Contents</h2>
@@ -68,7 +68,13 @@
   <a href="#trc">TRC — Taranaki Regional Council <span class="status-badge integrated">Integrated</span></a>
   <a href="#gwrc">GWRC — Greater Wellington Regional Council <span class="status-badge integrated">Integrated</span></a>
   <a href="#gdc">GDC — Gisborne District Council <span class="status-badge integrated">Integrated</span></a>
+  <a href="#ecan">ECAN — Environment Canterbury <span class="status-badge integrated">Integrated</span></a>
+  <a href="#orc">ORC — Otago Regional Council <span class="status-badge integrated">Integrated</span></a>
+  <a href="#es">ES — Environment Southland <span class="status-badge integrated">Integrated</span></a>
+  <a href="#mdc">MDC — Marlborough District Council <span class="status-badge integrated">Integrated</span></a>
+  <a href="#wcrc">WCRC — West Coast Regional Council <span class="status-badge integrated">Integrated</span></a>
   <a href="#ac">AC — Auckland Council <span class="status-badge unavailable">Not Available</span></a>
+  <a href="#tdc-ncc">TDC / NCC — Tasman District and Nelson City Councils <span class="status-badge unavailable">Not Available</span></a>
 </div>
 </div>
 
@@ -132,7 +138,7 @@
       <div class="meta-item"><strong>Endpoint:</strong> <a href="https://services1.arcgis.com/hWByVnSkh6ElzHkf/arcgis/rest/services">services1.arcgis.com/hWByVnSkh6ElzHkf — Resource Consents service</a></div>
       <div class="meta-item"><strong>File:</strong> <span class="pill">All_Consents_HBDC.geojson</span></div>
     </div>
-    <div class="notes-box">Dates stored as pre-formatted ISO strings. Includes both HBRC and HDC data. Multiple ID fields — both AuthorisationIRISID and ApplicationHistoricID are checked. DeemedPermitted is inferred from AuthorisationType field.</div>
+    <div class="notes-box"><strong>November 2026:</strong> the app reads <code>gis.hbrc.govt.nz/server/rest/services/ExternalServices/Regulatory/MapServer/1</code>, which refuses connections from outside New Zealand (including GitHub’s servers). The refresh then falls back to the council’s open-data export on ArcGIS Hub (item <code>92e050ec6c85469293f84c8b94a807bd</code>, layer 1), which also has <code>AuthorisationActivityType</code> (“Discharge Permit”…, mapped to Subtype); the manifest records the export’s own date as <code>sourceDate</code>. About a fifth of rows repeat a consent at another well or location and are merged.<br><br>Dates stored as pre-formatted ISO strings. Includes both HBRC and HDC data. Multiple ID fields — both AuthorisationIRISID and ApplicationHistoricID are checked. DeemedPermitted is inferred from AuthorisationType field.</div>
     <table>
       <tr><th>Field Name</th><th>Type</th><th>Alias / Description</th><th>Maps To (Normalised)</th></tr>
       <tr><td class="field-name">AuthorisationIRISID</td><td><span class="type-badge">String</span></td><td>Primary consent identifier</td><td class="mapped-to">ConsentID</td></tr>
@@ -337,7 +343,7 @@
       <div class="meta-item"><strong>Server type:</strong> <span class="pill">MapServer</span></div>
       <div class="meta-item"><strong>Coordinate system:</strong> <span class="pill">NZTM2000 (EPSG:2193) — fetched with outSR=4326</span></div>
     </div>
-    <div class="notes-box">Uses MapServer (like GWRC) — <code>exceededTransferLimit</code> flag is at the JSON root. Dates are stored as <strong>Unix millisecond timestamps</strong> and converted by <code>arcgisTimestampToIso()</code>. Publishes all consent statuses (Active, Expired, Granted, Cancelled, Closed, Deferred, Lapsed, Refused, Surrendered, Varied, Withdrawn). <strong>No applicant name is available</strong> — the source only provides <code>FirstApplicantId</code> (an internal numeric ID, not a name). Some records have no valid geometry (ungeocoded sites) and are silently dropped by the coordinate validation filter.</div>
+    <div class="notes-box"><strong>November 2026:</strong> the layer is back after a spell answering “404 Layer not found”, but the service now has no spatial reference set, so it returns NZTM metres even when asked for <code>outSR=4326</code>. The refresh recognises NZTM coordinates and converts them (<code>scripts/nztm.mjs</code>).<br><br>Uses MapServer (like GWRC) — <code>exceededTransferLimit</code> flag is at the JSON root. Dates are stored as <strong>Unix millisecond timestamps</strong> and converted by <code>arcgisTimestampToIso()</code>. Publishes all consent statuses (Active, Expired, Granted, Cancelled, Closed, Deferred, Lapsed, Refused, Surrendered, Varied, Withdrawn). <strong>No applicant name is available</strong> — the source only provides <code>FirstApplicantId</code> (an internal numeric ID, not a name). Some records have no valid geometry (ungeocoded sites) and are silently dropped by the coordinate validation filter.</div>
     <table>
       <tr><th>Field Name</th><th>Type</th><th>Alias / Description</th><th>Maps To (Normalised)</th></tr>
       <tr><td class="field-name">ConsentApplication</td><td><span class="type-badge">String</span></td><td>Consent application number (e.g. "10000")</td><td class="mapped-to">ConsentID</td></tr>
@@ -357,6 +363,184 @@
   </div>
 </div>
 
+<!-- ═══════════════════════════════════════════════════════ ECAN -->
+<div class="page" style="padding-top:0">
+<div class="region-card" id="ecan">
+  <div class="region-header integrated-h">
+    <h2>ECAN</h2>
+    <span class="council">Environment Canterbury (Canterbury Regional Council)</span>
+    <span class="badge">~117,000 rows</span>
+    <span class="badge">MapServer</span>
+    <span class="badge">Integrated ✓</span>
+  </div>
+  <div class="region-body">
+    <div class="meta-row">
+      <div class="meta-item"><strong>Endpoint:</strong> <a href="https://gis.ecan.govt.nz/arcgis/rest/services/Public/Resource_Consents/MapServer/45">gis.ecan.govt.nz/arcgis/rest/services/Public/Resource_Consents/MapServer/45</a></div>
+      <div class="meta-item"><strong>Joined layer:</strong> <span class="pill">MapServer/0 — Consented Activities (all activities), ~228,000 rows</span></div>
+      <div class="meta-item"><strong>Page limit:</strong> <span class="pill">3000</span></div>
+    </div>
+    <div class="notes-box">Every consent ever issued, including ~75,000 terminated ones (consents that ended over 10 years ago are left out of the app). What a consent allows is <strong>not</strong> on this layer: layer 0 lists each activity (<code>FeatureType</code> such as “Water Take/Use”, “Human Effluent”, “Dairy Effluent”; <code>ActivityText</code> such as “Take Groundwater”) and is joined on <code>ConsentNo</code> (attributes only). Statuses read “Issued - Active”, “Issued - Inactive” (granted, not yet given effect to — treated as current), “Issued - s124 Continuance”, “Terminated - Expired/Replaced/Surrendered/Lapsed…” and “Application …”. Holder names are published. “Human Effluent” consents are mostly household septic tanks.</div>
+    <table>
+      <tr><th>Field Name</th><th>Type</th><th>Alias / Description</th><th>Maps To (Normalised)</th></tr>
+      <tr><td class="field-name">ConsentNo</td><td><span class="type-badge">String</span></td><td>Consent number (e.g. “CRC150783”)</td><td class="mapped-to">ConsentID</td></tr>
+      <tr><td class="field-name">FileNo</td><td><span class="type-badge">String</span></td><td>File number</td><td class="mapped-to">ProjectNumber</td></tr>
+      <tr><td class="field-name">ConsentStatus</td><td><span class="type-badge">String</span></td><td>“Issued - Active”, “Terminated - Replaced”…</td><td class="mapped-to">Status (“Issued - Active” → Current; “Terminated - ” prefix dropped)</td></tr>
+      <tr><td class="field-name">HolderName</td><td><span class="type-badge">String</span></td><td>Consent holder</td><td class="mapped-to">PrimaryConsentHolder</td></tr>
+      <tr><td class="field-name">ConsentType</td><td><span class="type-badge">String</span></td><td>“Water Permit (s14)”, “Discharge Permit (s15)”, “Land Use Consent (s9/s13)”, “Coastal Permit (s12)”, “Permitted Activity”…</td><td class="mapped-to">Subtype</td></tr>
+      <tr><td class="field-name">Location</td><td><span class="type-badge">String</span></td><td>Site description (road, locality)</td><td class="mapped-to">SiteAddress</td></tr>
+      <tr><td class="field-name">GIS_TerritorialAuthority</td><td><span class="type-badge">String</span></td><td>District</td><td class="mapped-to">LocalAuthority</td></tr>
+      <tr><td class="field-name">GIS_CWMSZone</td><td><span class="type-badge">String</span></td><td>Canterbury Water Management Strategy zone</td><td class="mapped-to">WaterManagementZone</td></tr>
+      <tr><td class="field-name">GIS_Catchment</td><td><span class="type-badge">String</span></td><td>“6650200 - Waimakariri Water Race”</td><td class="mapped-to">WaterManagementArea (code removed)</td></tr>
+      <tr><td class="field-name">fmDate</td><td><span class="type-badge">Timestamp (ms)</span></td><td>Commencement date</td><td class="mapped-to">GrantedDate</td></tr>
+      <tr><td class="field-name">Expires</td><td><span class="type-badge">Timestamp (ms)</span></td><td>Expiry date</td><td class="mapped-to">ExpiryDate</td></tr>
+      <tr><td class="field-name">toDate / toDateText</td><td><span class="type-badge">Timestamp (ms)</span></td><td>Expiry or termination date, and which it is</td><td class="mapped-to">StatusDate (when it is a termination date)</td></tr>
+      <tr><td class="field-name">LINK</td><td><span class="type-badge">String</span></td><td>Consent page on ecan.govt.nz</td><td class="mapped-to">PublicDocumentsLink (rebuilt from the consent number)</td></tr>
+      <tr><td class="field-name">Layer 0: FeatureType</td><td><span class="type-badge">String</span></td><td>Activity feature, one row per activity</td><td class="mapped-to">Category (list)</td></tr>
+      <tr><td class="field-name">Layer 0: ActivityText</td><td><span class="type-badge">String</span></td><td>Activity description</td><td class="mapped-to">Purpose (list)</td></tr>
+      <tr><td class="field-name">ConsentSource, PermitType, ECNumber, Lapses, GivenEffectTo, GIS_*Zone, NZTMX/Y, CAP, FTID</td><td><span class="type-badge">Various</span></td><td>Origin, customer number, lapse and exercise dates, allocation zones, grid refs</td><td class="empty-map">Not mapped</td></tr>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ ORC -->
+<div class="page" style="padding-top:0">
+<div class="region-card" id="orc">
+  <div class="region-header integrated-h">
+    <h2>ORC</h2>
+    <span class="council">Otago Regional Council</span>
+    <span class="badge">~25,000 rows</span>
+    <span class="badge">MapServer</span>
+    <span class="badge">Integrated ✓</span>
+  </div>
+  <div class="region-body">
+    <div class="meta-row">
+      <div class="meta-item"><strong>Endpoint:</strong> <a href="https://maps.orc.govt.nz/arcgis/rest/services/ORCResourceConsents/MapServer/28">maps.orc.govt.nz/arcgis/rest/services/ORCResourceConsents/MapServer/28</a></div>
+      <div class="meta-item"><strong>Page limit:</strong> <span class="pill">2000</span></div>
+      <div class="meta-item"><strong>Updated:</strong> <span class="pill">Nightly</span></div>
+    </div>
+    <div class="notes-box">The “All Consents” layer; holder names and detailed purposes are published, but <strong>no granted or commencement date</strong>. “Expired – Pending Application” means an expired consent being renewed under s124. Many water permits replaced historic mining privileges, which their purpose text mentions. The server briefly answered 503 to parallel requests during testing; the refresh downloads regions one at a time.</div>
+    <table>
+      <tr><th>Field Name</th><th>Type</th><th>Alias / Description</th><th>Maps To (Normalised)</th></tr>
+      <tr><td class="field-name">ConsentNumber</td><td><span class="type-badge">String</span></td><td>e.g. “RM22.031.02” (older consents are plain numbers)</td><td class="mapped-to">ConsentID</td></tr>
+      <tr><td class="field-name">ConsentType</td><td><span class="type-badge">String</span></td><td>“Surface Water Take Permit”, “Bore Construction Consent”, “CMA Use Permit”…</td><td class="mapped-to">Subtype</td></tr>
+      <tr><td class="field-name">ConsentStatus</td><td><span class="type-badge">String</span></td><td>Current, Expired, Surrendered, Lapsed, Possibly Live, Not Yet Commenced…</td><td class="mapped-to">Status</td></tr>
+      <tr><td class="field-name">ConsentHolder</td><td><span class="type-badge">String</span></td><td>Holder name</td><td class="mapped-to">PrimaryConsentHolder</td></tr>
+      <tr><td class="field-name">ExpiryDate</td><td><span class="type-badge">Timestamp (ms)</span></td><td>Expiry date</td><td class="mapped-to">ExpiryDate</td></tr>
+      <tr><td class="field-name">DistrictAuthority</td><td><span class="type-badge">String</span></td><td>District</td><td class="mapped-to">LocalAuthority</td></tr>
+      <tr><td class="field-name">PurposeActivity</td><td><span class="type-badge">String</span></td><td>Full purpose</td><td class="mapped-to">Purpose</td></tr>
+      <tr><td class="field-name">ConsentCatchment</td><td><span class="type-badge">String</span></td><td>Catchment</td><td class="mapped-to">WaterManagementArea</td></tr>
+      <tr><td class="field-name">Easting, Northing, UpdateDate, GlobalID</td><td><span class="type-badge">Various</span></td><td>NZTM coordinates, refresh date, feature GUID</td><td class="empty-map">Not mapped</td></tr>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ ES -->
+<div class="page" style="padding-top:0">
+<div class="region-card" id="es">
+  <div class="region-header integrated-h">
+    <h2>ES</h2>
+    <span class="council">Environment Southland (Southland Regional Council)</span>
+    <span class="badge">~7,800 rows</span>
+    <span class="badge">MapServer</span>
+    <span class="badge">2 layers</span>
+    <span class="badge">Integrated ✓</span>
+  </div>
+  <div class="region-body">
+    <div class="meta-row">
+      <div class="meta-item"><strong>Endpoint:</strong> <a href="https://maps.es.govt.nz/server/rest/services/Public/Consents/MapServer">maps.es.govt.nz/server/rest/services/Public/Consents/MapServer — layers 2 and 24</a></div>
+      <div class="meta-item"><strong>Layer 2:</strong> <span class="pill">Current Resource Consents (~7,100 rows)</span></div>
+      <div class="meta-item"><strong>Layer 24:</strong> <span class="pill">Expired Consents (~700 rows, no holder names)</span></div>
+    </div>
+    <div class="notes-box">Current and expired consents are separate layers and are merged. Many consents appear once per location (one whey-discharge consent has 84 points); identical rows merge into one consent. The industry is published separately (<code>Primary_</code>, e.g. “Dairying - Cows”), which the app uses when classifying.</div>
+    <table>
+      <tr><th>Field Name</th><th>Type</th><th>Alias / Description</th><th>Maps To (Normalised)</th></tr>
+      <tr><td class="field-name">IRISID</td><td><span class="type-badge">String</span></td><td>Consent number (e.g. “AUTH-20242166-02”)</td><td class="mapped-to">ConsentID</td></tr>
+      <tr><td class="field-name">Contact</td><td><span class="type-badge">String</span></td><td>Holder (current layer only)</td><td class="mapped-to">PrimaryConsentHolder</td></tr>
+      <tr><td class="field-name">Type</td><td><span class="type-badge">String</span></td><td>“Water Permit”, “Land Use Permit”, “Dairy Consent”, “Whitebait Stand”…</td><td class="mapped-to">Subtype</td></tr>
+      <tr><td class="field-name">Subtype</td><td><span class="type-badge">String</span></td><td>“Groundwater Take (Consumptive)”, “Effluent Storage”…</td><td class="mapped-to">Category</td></tr>
+      <tr><td class="field-name">Details</td><td><span class="type-badge">String</span></td><td>Full purpose</td><td class="mapped-to">Purpose</td></tr>
+      <tr><td class="field-name">CommonName</td><td><span class="type-badge">String</span></td><td>Site name or address</td><td class="mapped-to">SiteAddress</td></tr>
+      <tr><td class="field-name">Primary_</td><td><span class="type-badge">String</span></td><td>Primary industry</td><td class="mapped-to">Industry</td></tr>
+      <tr><td class="field-name">StartDate</td><td><span class="type-badge">Timestamp (ms)</span></td><td>Commencement date</td><td class="mapped-to">GrantedDate</td></tr>
+      <tr><td class="field-name">ExpiryDate</td><td><span class="type-badge">Timestamp (ms)</span></td><td>Expiry date</td><td class="mapped-to">ExpiryDate</td></tr>
+      <tr><td class="field-name">Status</td><td><span class="type-badge">String</span></td><td>Current, “Current – Under objection/appeal”, “Expired - S.124 Protection”, Expired</td><td class="mapped-to">Status</td></tr>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ MDC -->
+<div class="page" style="padding-top:0">
+<div class="region-card" id="mdc">
+  <div class="region-header integrated-h">
+    <h2>MDC</h2>
+    <span class="council">Marlborough District Council (unitary)</span>
+    <span class="badge">~73,600 rows</span>
+    <span class="badge">MapServer</span>
+    <span class="badge">Integrated ✓</span>
+  </div>
+  <div class="region-body">
+    <div class="meta-row">
+      <div class="meta-item"><strong>Endpoint:</strong> <a href="https://gis.marlborough.govt.nz/server/rest/services/OpenData/OpenData3/MapServer/5">gis.marlborough.govt.nz/server/rest/services/OpenData/OpenData3/MapServer/5</a></div>
+      <div class="meta-item"><strong>Page limit:</strong> <span class="pill">1000</span></div>
+      <div class="meta-item"><strong>Updated:</strong> <span class="pill">Daily</span></div>
+    </div>
+    <div class="notes-box">A unitary authority, so district land use and subdivision consents are included. <strong>Subdivision consents (~13,000) are left out</strong> — they never expire and no other council’s data has them. The status is blank until a consent is issued; the decision says why (in process, withdrawn, refused), and the app uses it. Applications still in process carry temporary numbers such as “250647.TMP.12577”.</div>
+    <table>
+      <tr><th>Field Name</th><th>Type</th><th>Alias / Description</th><th>Maps To (Normalised)</th></tr>
+      <tr><td class="field-name">ConsentNumber</td><td><span class="type-badge">String</span></td><td>e.g. “130606.01”</td><td class="mapped-to">ConsentID</td></tr>
+      <tr><td class="field-name">ConsentNumberPFOL</td><td><span class="type-badge">String</span></td><td>Property-files reference, e.g. “U130606”</td><td class="mapped-to">ProjectNumber</td></tr>
+      <tr><td class="field-name">ConsentStatusDescription</td><td><span class="type-badge">String</span></td><td>Active, Expired, Surrendered, Lapsed, Transferred, Cancelled (blank before issue)</td><td class="mapped-to">Status (Active → Current)</td></tr>
+      <tr><td class="field-name">DecisionMadeDescription</td><td><span class="type-badge">String</span></td><td>Granted, Withdrawn/Closed, Refused, Consent order…</td><td class="mapped-to">Status when blank; decides GrantedDate vs StatusDate</td></tr>
+      <tr><td class="field-name">ApplicantNames</td><td><span class="type-badge">String</span></td><td>Holder(s), often surname first</td><td class="mapped-to">PrimaryConsentHolder</td></tr>
+      <tr><td class="field-name">ConsentTypeDescription</td><td><span class="type-badge">String</span></td><td>“Coastal Permit - Marine Farm”, “Water Permit - Take Underground Water”…</td><td class="mapped-to">Subtype</td></tr>
+      <tr><td class="field-name">ConsentTypeParentDescription</td><td><span class="type-badge">String</span></td><td>Land use, Coastal, Subdivision, Water, Discharge, Regulation</td><td class="mapped-to">Used to leave out subdivisions</td></tr>
+      <tr><td class="field-name">DescriptionOfActivity</td><td><span class="type-badge">String</span></td><td>Full purpose (up to ~4,000 characters)</td><td class="mapped-to">Purpose</td></tr>
+      <tr><td class="field-name">DecisionDate</td><td><span class="type-badge">Timestamp (ms)</span></td><td>Decision date</td><td class="mapped-to">GrantedDate (granted) / StatusDate (withdrawn or refused)</td></tr>
+      <tr><td class="field-name">ExpiryDate</td><td><span class="type-badge">Timestamp (ms)</span></td><td>Expiry date (45% filled; land use consents usually have none)</td><td class="mapped-to">ExpiryDate</td></tr>
+      <tr><td class="field-name">PropertyFilesLink</td><td><span class="type-badge">String</span></td><td>Property Files Online search for the consent</td><td class="mapped-to">PublicDocumentsLink (rebuilt from ProjectNumber)</td></tr>
+      <tr><td class="field-name">ProcessingConsentNumber, PropertyNumbers, ApplicationLocationEasting/Northing, UrbanDevelopmentArea</td><td><span class="type-badge">Various</span></td><td>Application number, property numbers, NZTM location</td><td class="empty-map">Not mapped</td></tr>
+    </table>
+  </div>
+</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ WCRC -->
+<div class="page" style="padding-top:0">
+<div class="region-card" id="wcrc">
+  <div class="region-header integrated-h">
+    <h2>WCRC</h2>
+    <span class="council">West Coast Regional Council</span>
+    <span class="badge">~27,200 rows</span>
+    <span class="badge">FeatureServer (hosted)</span>
+    <span class="badge">Integrated ✓</span>
+  </div>
+  <div class="region-body">
+    <div class="meta-row">
+      <div class="meta-item"><strong>Endpoint:</strong> <a href="https://utility.arcgis.com/usrsvcs/servers/39c782f2da1442bda74406e716a5aa37/rest/services/Hosted/IRIS_Consents_and_Applications_External_Layer/FeatureServer/1">utility.arcgis.com/…/IRIS_Consents_and_Applications_External_Layer/FeatureServer/1</a></div>
+      <div class="meta-item"><strong>Page limit:</strong> <span class="pill">1000</span></div>
+      <div class="meta-item"><strong>Not used:</strong> <span class="pill">Layer 0 — IRIS Consent Application Point (applications)</span></div>
+    </div>
+    <div class="notes-box">Read through the council’s ArcGIS Online proxy because its own map server (<code>gis.westcoast.govt.nz</code>) often answers 502. File numbers carry trailing spaces, and many consents appear once per location (merged). The activity subtype “Tracking/Logging/Land Clearing/Land Disturbance” is a catch-all for land disturbance (gold mining earthworks included), and “Contaminants to Water (other than CMA)” is freshwater — the classifier allows for both.</div>
+    <table>
+      <tr><th>Field Name</th><th>Type</th><th>Alias / Description</th><th>Maps To (Normalised)</th></tr>
+      <tr><td class="field-name">filenumber</td><td><span class="type-badge">String</span></td><td>e.g. “RC06001” (trimmed)</td><td class="mapped-to">ConsentID</td></tr>
+      <tr><td class="field-name">currentstatus</td><td><span class="type-badge">String</span></td><td>Current, Expired, Surrendered, “Expired - S.124 Protection”, “Current - Pending Surrender”…</td><td class="mapped-to">Status</td></tr>
+      <tr><td class="field-name">nameforservice</td><td><span class="type-badge">String</span></td><td>Holder name</td><td class="mapped-to">PrimaryConsentHolder</td></tr>
+      <tr><td class="field-name">locality</td><td><span class="type-badge">String</span></td><td>Locality (27% filled)</td><td class="mapped-to">SiteAddress</td></tr>
+      <tr><td class="field-name">authdescription</td><td><span class="type-badge">String</span></td><td>Purpose</td><td class="mapped-to">Purpose</td></tr>
+      <tr><td class="field-name">authorisationactivitytype</td><td><span class="type-badge">String</span></td><td>Land Use Consent, Discharge Permit, Coastal Permit, Water Permit…</td><td class="mapped-to">Subtype</td></tr>
+      <tr><td class="field-name">authorisationactivitysubtype</td><td><span class="type-badge">String</span></td><td>“Works in or on Beds of Rivers and Lakes”, “Septic Tank Informational”…</td><td class="mapped-to">Category</td></tr>
+      <tr><td class="field-name">authorisationtype</td><td><span class="type-badge">String</span></td><td>Resource Consent, Permitted Activity, Certificate Of Compliance, Deemed Permitted Activity</td><td class="mapped-to">DeemedPermitted (deemed only)</td></tr>
+      <tr><td class="field-name">commencementdate</td><td><span class="type-badge">Timestamp (ms)</span></td><td>Commencement date</td><td class="mapped-to">GrantedDate</td></tr>
+      <tr><td class="field-name">expirydate</td><td><span class="type-badge">Timestamp (ms)</span></td><td>Expiry date</td><td class="mapped-to">ExpiryDate</td></tr>
+    </table>
+  </div>
+</div>
+</div>
+
 <!-- ═══════════════════════════════════════════════════════ Auckland -->
 <div class="region-card" id="ac">
   <div class="region-header unavailable-h">
@@ -373,10 +557,27 @@
     <div class="notes-box warn">⛔ <strong>Auckland Council does not provide a publicly accessible ArcGIS endpoint for resource consent data.</strong><br><br>
     All requests to their ArcGIS REST services return: <code>{"error":{"code":499,"message":"Token Required"}}</code><br><br>
     Their open data portal (data-aucklandcouncil.opendata.arcgis.com) lists 200+ datasets but no resource consent database is published publicly. Resource consent data for Auckland is only available through their internal consent portal or by request.<br><br>
-    <strong>Alternatives to explore:</strong> LAWA (Land Air Water Aotearoa), data.govt.nz dataset request, or direct contact with Auckland Council GIS team under an Official Information Act request.</div>
+    <strong>Alternatives to explore:</strong> LAWA (Land Air Water Aotearoa), data.govt.nz dataset request, or direct contact with Auckland Council GIS team under an Official Information Act request.<br><br>
+    <em>Checked again in November 2026:</em> the <code>mapspublic.aucklandcouncil.govt.nz</code> OpenData folder still needs a token, and the open data hub still has no consent dataset.</div>
     <table>
       <tr><th colspan="4" style="background:#f8d7da; color:#721c24; text-align:center; padding:8px;">No public field schema available — endpoint requires authentication token</th></tr>
     </table>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ Tasman & Nelson -->
+<div class="region-card" id="tdc-ncc">
+  <div class="region-header unavailable-h">
+    <h2>TDC / NCC</h2>
+    <span class="council">Tasman District Council and Nelson City Council</span>
+    <span class="badge">✗ Not Published</span>
+  </div>
+  <div class="region-body">
+    <div class="notes-box warn">⛔ <strong>Neither council publishes resource consent data</strong> (checked November 2026).<br><br>
+    <strong>Tasman:</strong> the public server <code>gispublic.tasman.govt.nz/server/rest/services/OpenData</code> has Environment, Planning (TRMP), Property and Regulatory services, none with consents. Tasman’s “Consents and Licenses” web map on ArcGIS Online reads from internal servers (<code>tsrvgis102</code>) that aren’t reachable from outside.<br><br>
+    <strong>Nelson:</strong> the NelsonCityGIS organisation (~350 items) has no consent dataset; “MaitaiRodingResourceConsent” covers one project only.<br><br>
+    <strong>Top of the South Maps</strong> (<code>www.topofthesouthmaps.co.nz</code>, shared by both) has no consent layers; its <code>totsmv4</code> server doesn’t answer from overseas.<br><br>
+    <strong>Alternatives:</strong> ask either council’s GIS team for an open-data layer, or an Official Information Act request.</div>
   </div>
 </div>
 
@@ -387,34 +588,36 @@
     <span class="council">Fields present on every feature after normalisation — regardless of source region</span>
   </div>
   <div class="region-body">
-    <div class="notes-box">All source datasets are normalised to this common schema before being loaded into the map. Fields not available from a source default to empty string <code>''</code>. Empty ExpiryDate = treated as Expired.</div>
+    <div class="notes-box">All source datasets are normalised to this common schema before being loaded into the map. Fields not available from a source default to empty string <code>''</code>. A consent with no expiry date appears only under <em>All</em>.<br><br>
+    <strong>Since November 2026</strong> the refresh also merges rows that repeat one consent at several locations (rows sharing a number but differing in substance stay separate, with <code>#2</code>, <code>#3</code>… added to the GlobalID), and leaves out consents that ended more than 10 years ago and undated applications that never became consents.</div>
     <table class="norm-table">
       <tr><th>Normalised Field</th><th>Description</th><th>Available From</th></tr>
       <tr><td class="field-name">ConsentID</td><td>Consent reference number</td><td>All</td></tr>
       <tr><td class="field-name">ProjectNumber</td><td>Project / application number</td><td>BOPRC, HBDC, WRC, GDC</td></tr>
       <tr><td class="field-name">Status</td><td>Source status text (Current, Expired, Active, etc.)</td><td>All</td></tr>
-      <tr><td class="field-name">PrimaryConsentHolder</td><td>Legal holder name</td><td>BOPRC, WRC</td></tr>
-      <tr><td class="field-name">HolderDisplay</td><td>Display holder (may differ from legal name)</td><td>BOPRC, HBDC, WRC</td></tr>
+      <tr><td class="field-name">PrimaryConsentHolder</td><td>Legal holder name</td><td>BOPRC, WRC, ECAN, ORC, ES (current), MDC, WCRC</td></tr>
+      <tr><td class="field-name">HolderDisplay</td><td>Display holder (no longer written; older files may have it)</td><td>—</td></tr>
       <tr><td class="field-name">PrimaryConsentHolderAddress</td><td>Holder postal address</td><td>BOPRC only</td></tr>
-      <tr><td class="field-name">SiteAddress</td><td>Site/property address</td><td>BOPRC, HBDC, WRC, GDC</td></tr>
+      <tr><td class="field-name">SiteAddress</td><td>Site/property address</td><td>BOPRC, HBDC, WRC, GDC, ECAN, ES, WCRC</td></tr>
       <tr><td class="field-name">Purpose</td><td>Activity purpose / description</td><td>All (varies in detail)</td></tr>
       <tr><td class="field-name">Subtype</td><td>Consent subtype or activity type</td><td>All except NRC</td></tr>
-      <tr><td class="field-name">Category</td><td>Industry category or detailed activity descriptor</td><td>BOPRC, HBDC, HRC, WRC, GWRC</td></tr>
-      <tr><td class="field-name">WaterManagementZone</td><td>Water management zone</td><td>BOPRC only</td></tr>
-      <tr><td class="field-name">WaterManagementArea</td><td>Water management sub-area</td><td>BOPRC only</td></tr>
+      <tr><td class="field-name">Category</td><td>Industry category or detailed activity descriptor</td><td>BOPRC, HBDC, HRC, WRC, GWRC, ECAN, ES, WCRC</td></tr>
+      <tr><td class="field-name">Industry</td><td>Primary industry, where published separately</td><td>ES</td></tr>
+      <tr><td class="field-name">WaterManagementZone</td><td>Water management zone</td><td>BOPRC, ECAN</td></tr>
+      <tr><td class="field-name">WaterManagementArea</td><td>Water management sub-area or catchment</td><td>BOPRC, ECAN, ORC</td></tr>
       <tr><td class="field-name">ComplianceOfficer</td><td>Assigned compliance officer</td><td>BOPRC only</td></tr>
-      <tr><td class="field-name">GrantedDate</td><td>Date consent was granted (YYYY-MM-DD)</td><td>BOPRC, HBDC, HRC, WRC, GWRC, GDC</td></tr>
+      <tr><td class="field-name">GrantedDate</td><td>Date consent was granted (YYYY-MM-DD)</td><td>BOPRC, HBDC, HRC, WRC, GWRC, GDC, ECAN, ES, MDC, WCRC</td></tr>
       <tr><td class="field-name">LodgedDate</td><td>Date application was lodged</td><td>BOPRC, GDC</td></tr>
-      <tr><td class="field-name">ExpiryDate</td><td>Expiry date (YYYY-MM-DD). Blank = treated as Expired</td><td>BOPRC, HBDC, HRC, WRC, TRC, GWRC, GDC</td></tr>
-      <tr><td class="field-name">StatusDate</td><td>Date status last changed / elapsed</td><td>BOPRC, GWRC</td></tr>
+      <tr><td class="field-name">ExpiryDate</td><td>Expiry date (YYYY-MM-DD)</td><td>All except NRC</td></tr>
+      <tr><td class="field-name">StatusDate</td><td>Date status last changed / elapsed / consent ended early</td><td>BOPRC, GWRC, ECAN, MDC</td></tr>
       <tr><td class="field-name">CapID</td><td>CAP / legacy application ID / DM folder reference</td><td>BOPRC, HBDC, GWRC, GDC</td></tr>
       <tr><td class="field-name">FactorySupplyNumber</td><td>Dairy factory supply number / bore ID</td><td>BOPRC, HBDC, GDC</td></tr>
-      <tr><td class="field-name">PublicDocumentsLink</td><td>URL to public consent documents or document search</td><td>BOPRC, HBDC, GWRC</td></tr>
+      <tr><td class="field-name">PublicDocumentsLink</td><td>URL to public consent documents or document search</td><td>BOPRC, HBDC, GWRC, ECAN, MDC</td></tr>
       <tr><td class="field-name">DeemedPermitted</td><td>Whether deemed a permitted activity / publicly notified flag</td><td>BOPRC, HBDC, GDC</td></tr>
       <tr><td class="field-name">GlobalID</td><td>Unique cross-region identifier (Region:ConsentID)</td><td>All</td></tr>
-      <tr><td class="field-name">Region</td><td>Region code (BOPRC / HBDC / NRC / HRC / WRC / TRC / GWRC / GDC)</td><td>All</td></tr>
+      <tr><td class="field-name">Region</td><td>Region code (NRC / WRC / BOPRC / GDC / HBDC / TRC / HRC / GWRC / MDC / WCRC / ECAN / ORC / ES)</td><td>All</td></tr>
       <tr><td class="field-name">SourceDataset</td><td>Source dataset name (same as Region)</td><td>All</td></tr>
-      <tr><td class="field-name">LocalAuthority</td><td>Full council name</td><td>All</td></tr>
+      <tr><td class="field-name">LocalAuthority</td><td>District the consent is in (or the council name)</td><td>All</td></tr>
     </table>
   </div>
 </div>

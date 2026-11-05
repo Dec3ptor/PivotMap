@@ -3,9 +3,11 @@
 Finds New Zealand resource consents that are about to expire — renewal work for WSP NZ
 teams — and shows the land parcel, titles and every other consent at the site.
 
-It covers about 189,000 consents from eight councils: Bay of Plenty (BOPRC), Hawke's Bay (HBDC),
-Northland (NRC), Horizons (HRC), Waikato (WRC), Taranaki (TRC), Greater Wellington (GWRC)
-and Gisborne (GDC).
+It covers about 255,000 current and recently ended consents from the thirteen councils that
+publish them as open data: Northland (NRC), Waikato (WRC), Bay of Plenty (BOPRC), Gisborne (GDC),
+Hawke's Bay (HBDC), Taranaki (TRC), Horizons (HRC), Greater Wellington (GWRC), Marlborough (MDC),
+West Coast (WCRC), Canterbury (ECAN), Otago (ORC) and Southland (ES). Auckland, Tasman and
+Nelson don't publish their consents openly (see [Council data notes](#council-data-notes)).
 
 **Live site:** https://dec3ptor.github.io/PivotMap/ (after the one-time setup below)
 
@@ -66,24 +68,48 @@ After that:
 - **To refresh the data right now**, run the workflow by hand (**Run workflow** with
   *Download fresh consent data* ticked).
 
-If a council's service is down or returns far fewer consents than last time, that region
-keeps its previous data and the run's summary shows a warning. The **Data** button in the
-app shows when each council was last updated and flags any more than three days old.
+If a council's service is down or returns less than half as many records as last time, that
+region keeps its previous data and the run's summary shows a warning. The **Data** button in
+the app shows when each council was last updated and flags any more than three days old.
 If no region can be refreshed at all, the run fails so you get GitHub's failure email.
 
 GitHub pauses scheduled workflows in public repositories after 60 days without
 repository activity. If that happens, re-enable it from the **Actions** tab.
 
-### Councils not currently refreshing
+### Council data notes
 
-As of October 2026 two councils' daily downloads fail, so the app shows their April 2026 data:
+- **Hawke's Bay**'s server (`gis.hbrc.govt.nz`) refuses connections from outside New Zealand,
+  including GitHub's servers. The refresh then uses the council's open-data copy on ArcGIS Hub
+  (`fallback` in `scripts/regions.mjs`), which Hub refreshes itself and can be a few days
+  behind; the **Data** panel shows its date. Run from a New Zealand connection, the refresh
+  uses the council's server directly.
+- **Gisborne**'s server answers in NZTM metres even when asked for latitude and longitude;
+  the refresh converts them ([`scripts/nztm.mjs`](scripts/nztm.mjs)).
+- **West Coast** is read through the council's ArcGIS Online copy, because its own map server
+  is often down.
+- **Canterbury** lists what each consent allows (*Take Groundwater*, *Dairy Effluent*…) in a
+  separate layer, joined on the consent number. It files every septic tank as *Human
+  Effluent*; the app counts those as small domestic jobs unless a council or utility holds them.
+- **Southland** publishes current and expired consents as separate layers, and expired ones
+  without holder names.
+- **Marlborough** and **Gisborne** are unitary councils, so their data includes district
+  land use consents. Marlborough's subdivision consents are left out (they never expire).
+- **Not available:** Auckland's consent layers need a council login; Tasman and Nelson
+  publish no consent data (their consent maps use internal servers). Chatham Islands
+  consents aren't published either.
 
-- **Hawke's Bay** (`gis.hbrc.govt.nz`): connections from GitHub's servers fail ("fetch failed"),
-  which suggests the council blocks overseas or cloud traffic. Running
-  `npm run update-data -- --region HBDC` from a New Zealand connection should work.
-- **Gisborne** (`maps.gdc.govt.nz/hosting/.../resource_consents_ext/MapServer/0`): the layer
-  now returns "404 Layer not found". The council has moved or renamed it; find the new layer
-  URL in the council's ArcGIS services directory and update `scripts/regions.mjs`.
+### What the refresh keeps
+
+- **One record per consent.** Several councils publish a consent once per location (a
+  discharge to 80 paddocks appears 80 times). Rows that agree on everything but the location
+  merge into one, listing any bore numbers that differ; rows that share a number but differ
+  in substance (Wellington files several consents under one number) stay separate, with
+  `#2`, `#3`… added to their IDs.
+- **Ten years of history.** Consents that ended more than 10 years ago are left out
+  (`HISTORY_YEARS` and `keepRecord()` in `scripts/regions.mjs`), as are undated applications
+  that never became consents (withdrawn, declined, returned). Without this Canterbury alone
+  would add 60,000 long-gone consents and the app would load far more slowly. Ended consents
+  with no dates at all (Northland's) are kept.
 
 ## Running it locally
 
@@ -114,7 +140,8 @@ public/                    the website (deployed as-is)
   data/<region>.json       one file per council, already normalised for the app
 scripts/
   regions.mjs              each council's ArcGIS endpoint and field mapping
-  arcgis.mjs               pages through an ArcGIS REST layer's /query endpoint
+  arcgis.mjs               pages through an ArcGIS REST layer's /query endpoint; Hub exports
+  nztm.mjs                 NZTM2000 → latitude/longitude, for servers that ignore outSR
   update-data.mjs          downloads, normalises and writes public/data/
   serve.mjs                local web server used by `npm start`
 test/                      tests (node:test) for the pipeline and the app's logic
@@ -134,14 +161,18 @@ against real examples in [`test/consents.test.mjs`](test/consents.test.mjs) — 
 there when you adjust a rule.
 
 The region files are compact: a list of `fields`, `constants` shared by every record,
-and one `[longitude, latitude, ...values]` row per consent, one row per line, so
-`git diff` shows which consents changed from day to day.
+`links` patterns the app fills in (so 50,000 near-identical URLs aren't stored), and one
+`[longitude, latitude, ...values]` row per consent, one row per line, so `git diff` shows
+which consents changed from day to day.
 
 ### Adding a council
 
 1. Add an entry to `REGIONS` in [`scripts/regions.mjs`](scripts/regions.mjs) with its
    ArcGIS layer URL (ending in `/MapServer/<n>` or `/FeatureServer/<n>`) and a
-   `normalize` function mapping its fields.
+   `normalize` function mapping its fields (return `null` to leave a record out). Optional
+   settings cover the awkward cases: `pageSize` (the server's page limit), `layers` (more
+   layers to add, like Southland's expired consents), `details` (a layer to join on, like
+   Canterbury's activities), `fallback` (an ArcGIS Hub copy) and `links` (link patterns).
 2. Run `npm run update-data -- --region <ID>` and check the result with `npm start`.
    If the council describes activities differently, check the *Type of work* counts and
    add rules or test cases in `public/js/consents.js`.
@@ -154,8 +185,9 @@ manifest, so nothing else needs changing.
 
 - Consent data belongs to the councils and comes from their public ArcGIS services.
   Check each council's licence terms before reusing it, and check with the council
-  before relying on a record. Only Bay of Plenty and Waikato publish holder names;
-  Northland publishes no expiry dates; Taranaki publishes current consents only.
+  before relying on a record. Hawke's Bay, Northland, Horizons, Taranaki, Wellington and
+  Gisborne don't publish holder names; Northland publishes no expiry dates; Waikato and
+  Taranaki publish current consents only.
 - Map tiles come from LINZ Basemaps, OpenStreetMap, OpenTopoMap and CARTO; place search
   uses OpenStreetMap's Nominatim. The LINZ Basemaps key in `public/js/map.js` is visible to
   every visitor, as is normal for browser map keys. You can get your own free key from
