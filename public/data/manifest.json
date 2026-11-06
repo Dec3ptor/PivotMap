@@ -8,7 +8,7 @@
       "count": 30293,
       "downloaded": 36396,
       "hash": "d847851e47ce",
-      "fetchedAt": "2026-11-05T23:35:47.356Z",
+      "fetchedAt": "2026-11-05T23:59:45.602Z",
       "source": "https://services2.arcgis.com/J8errK5dyxu7Xjf7/arcgis/rest/services/Resource_Consents_/FeatureServer/0"
     },
     {
@@ -18,16 +18,17 @@
       "count": 19964,
       "downloaded": 24797,
       "hash": "32e01f97c7ac",
-      "fetchedAt": "2026-11-05T23:36:04.700Z",
+      "fetchedAt": "2026-11-05T23:59:54.046Z",
       "source": "https://services.arcgis.com/2bzQ0Ix3iO7MItUa/arcgis/rest/services/WDP_AUTH_ACTIVE_RESOURCE_CONSENTS_EXT/FeatureServer/0"
     },
     {
       "id": "BOPRC",
       "name": "Bay of Plenty Regional Council",
       "file": "boprc.json",
-      "count": 29850,
-      "hash": "858f7a69c299",
-      "fetchedAt": "2026-11-05T22:07:53.055Z",
+      "count": 16943,
+      "downloaded": 29850,
+      "hash": "5f166dc71c4f",
+      "fetchedAt": "2026-11-06T00:00:15.060Z",
       "source": "https://gis.boprc.govt.nz/server2/rest/services/BayOfPlentyMaps/ConsentsandCompliance/MapServer/45"
     },
     {
@@ -37,7 +38,7 @@
       "count": 17155,
       "downloaded": 23258,
       "hash": "047cfbf1629f",
-      "fetchedAt": "2026-11-05T23:36:19.257Z",
+      "fetchedAt": "2026-11-06T00:00:25.803Z",
       "source": "https://maps.gdc.govt.nz/hosting/rest/services/Property/resource_consents_ext/MapServer/0"
     },
     {
@@ -47,7 +48,7 @@
       "count": 15412,
       "downloaded": 33988,
       "hash": "67af02eb2929",
-      "fetchedAt": "2026-11-05T23:35:30.365Z",
+      "fetchedAt": "2026-11-06T00:01:19.689Z",
       "source": "https://gis.hbrc.govt.nz/server/rest/services/ExternalServices/Regulatory/MapServer/1",
       "copy": "https://hub.arcgis.com/api/v3/datasets/92e050ec6c85469293f84c8b94a807bd_1/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1",
       "sourceDate": "2026-10-27T01:50:33.000Z"
@@ -59,7 +60,7 @@
       "count": 4203,
       "downloaded": 5157,
       "hash": "66614f393bec",
-      "fetchedAt": "2026-11-05T23:36:06.880Z",
+      "fetchedAt": "2026-11-06T00:01:20.495Z",
       "source": "https://services.arcgis.com/MMPHUPU6MnEt0lEK/arcgis/rest/services/Ressource_Consents/FeatureServer/7"
     },
     {
@@ -69,16 +70,17 @@
       "count": 5094,
       "downloaded": 10759,
       "hash": "54ef4d8ed8d6",
-      "fetchedAt": "2026-11-05T23:35:52.584Z",
+      "fetchedAt": "2026-11-06T00:01:25.445Z",
       "source": "https://services1.arcgis.com/VuN78wcRdq1Oj69W/ArcGIS/rest/services/OpenData_RegulatoryActivity/FeatureServer/3"
     },
     {
       "id": "GWRC",
       "name": "Greater Wellington Regional Council",
       "file": "gwrc.json",
-      "count": 26980,
-      "hash": "c8c965da7499",
-      "fetchedAt": "2026-11-05T22:19:07.638Z",
+      "count": 11301,
+      "downloaded": 26980,
+      "hash": "a474be5feead",
+      "fetchedAt": "2026-11-06T00:10:14.136Z",
       "source": "https://mapping.gw.govt.nz/arcgis/rest/services/GW/Resource_Consents_P/MapServer/0"
     },
     {
@@ -88,7 +90,7 @@
       "count": 45496,
       "downloaded": 73625,
       "hash": "ea8937555bd0",
-      "fetchedAt": "2026-11-05T23:41:31.385Z",
+      "fetchedAt": "2026-11-06T00:11:36.701Z",
       "source": "https://gis.marlborough.govt.nz/server/rest/services/OpenData/OpenData3/MapServer/5"
     },
     {
@@ -98,7 +100,7 @@
       "count": 14189,
       "downloaded": 27188,
       "hash": "b3fe4c0bc0db",
-      "fetchedAt": "2026-11-05T23:42:17.665Z",
+      "fetchedAt": "2026-11-06T00:12:26.397Z",
       "source": "https://utility.arcgis.com/usrsvcs/servers/39c782f2da1442bda74406e716a5aa37/rest/services/Hosted/IRIS_Consents_and_Applications_External_Layer/FeatureServer/1"
     },
     {
@@ -108,7 +110,7 @@
       "count": 55460,
       "downloaded": 117219,
       "hash": "42c5390dccfa",
-      "fetchedAt": "2026-11-05T23:39:44.143Z",
+      "fetchedAt": "2026-11-06T00:15:31.230Z",
       "source": "https://gis.ecan.govt.nz/arcgis/rest/services/Public/Resource_Consents/MapServer/45"
     },
     {
@@ -118,7 +120,7 @@
       "count": 12884,
       "downloaded": 25050,
       "hash": "502cb7f2a6f0",
-      "fetchedAt": "2026-11-05T23:39:59.404Z",
+      "fetchedAt": "2026-11-06T00:15:43.416Z",
       "source": "https://maps.orc.govt.nz/arcgis/rest/services/ORCResourceConsents/MapServer/28"
     },
     {
@@ -128,7 +130,7 @@
       "count": 5546,
       "downloaded": 7797,
       "hash": "abcf67c33886",
-      "fetchedAt": "2026-11-05T23:40:06.470Z",
+      "fetchedAt": "2026-11-06T00:15:49.041Z",
       "source": "https://maps.es.govt.nz/server/rest/services/Public/Consents/MapServer/2"
     }
   ]
