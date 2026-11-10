@@ -5,10 +5,10 @@
       "id": "NRC",
       "name": "Northland Regional Council",
       "file": "nrc.json",
-      "count": 30302,
-      "downloaded": 36406,
-      "hash": "dd03610e12f5",
-      "fetchedAt": "2026-11-10T00:19:52.105Z",
+      "count": 30305,
+      "downloaded": 36409,
+      "hash": "0f28274cd6cd",
+      "fetchedAt": "2026-11-10T21:51:43.251Z",
       "source": "https://services2.arcgis.com/J8errK5dyxu7Xjf7/arcgis/rest/services/Resource_Consents_/FeatureServer/0"
     },
     {
@@ -16,19 +16,19 @@
       "name": "Waikato Regional Council",
       "file": "wrc.json",
       "count": 19978,
-      "downloaded": 24778,
-      "hash": "d44191b5eef4",
-      "fetchedAt": "2026-11-10T00:20:01.079Z",
+      "downloaded": 24779,
+      "hash": "e94c859e24b5",
+      "fetchedAt": "2026-11-10T21:51:52.654Z",
       "source": "https://services.arcgis.com/2bzQ0Ix3iO7MItUa/arcgis/rest/services/WDP_AUTH_ACTIVE_RESOURCE_CONSENTS_EXT/FeatureServer/0"
     },
     {
       "id": "BOPRC",
       "name": "Bay of Plenty Regional Council",
       "file": "boprc.json",
-      "count": 16943,
-      "downloaded": 29850,
-      "hash": "39c517d20f5f",
-      "fetchedAt": "2026-11-10T00:20:24.266Z",
+      "count": 16945,
+      "downloaded": 29852,
+      "hash": "3677c1f29889",
+      "fetchedAt": "2026-11-10T21:52:11.834Z",
       "source": "https://gis.boprc.govt.nz/server2/rest/services/BayOfPlentyMaps/ConsentsandCompliance/MapServer/45"
     },
     {
@@ -37,8 +37,8 @@
       "file": "gdc.json",
       "count": 17152,
       "downloaded": 23261,
-      "hash": "8d0256232476",
-      "fetchedAt": "2026-11-10T00:20:34.163Z",
+      "hash": "0f7a9b2a2025",
+      "fetchedAt": "2026-11-10T21:52:32.630Z",
       "source": "https://maps.gdc.govt.nz/hosting/rest/services/Property/resource_consents_ext/MapServer/0"
     },
     {
@@ -48,7 +48,7 @@
       "count": 15412,
       "downloaded": 33988,
       "hash": "67af02eb2929",
-      "fetchedAt": "2026-11-10T00:21:28.279Z",
+      "fetchedAt": "2026-11-10T21:53:27.051Z",
       "source": "https://gis.hbrc.govt.nz/server/rest/services/ExternalServices/Regulatory/MapServer/1",
       "copy": "https://hub.arcgis.com/api/v3/datasets/92e050ec6c85469293f84c8b94a807bd_1/downloads/data?format=geojson&spatialRefId=4326&where=1%3D1",
       "sourceDate": "2026-10-27T01:50:33.000Z"
@@ -57,10 +57,10 @@
       "id": "TRC",
       "name": "Taranaki Regional Council",
       "file": "trc.json",
-      "count": 4205,
-      "downloaded": 5159,
-      "hash": "7b99c764af76",
-      "fetchedAt": "2026-11-10T00:21:30.208Z",
+      "count": 4202,
+      "downloaded": 5155,
+      "hash": "3961afe29832",
+      "fetchedAt": "2026-11-10T21:53:29.209Z",
       "source": "https://services.arcgis.com/MMPHUPU6MnEt0lEK/arcgis/rest/services/Ressource_Consents/FeatureServer/7"
     },
     {
@@ -70,7 +70,7 @@
       "count": 5094,
       "downloaded": 10759,
       "hash": "54ef4d8ed8d6",
-      "fetchedAt": "2026-11-10T00:21:35.241Z",
+      "fetchedAt": "2026-11-10T21:53:34.469Z",
       "source": "https://services1.arcgis.com/VuN78wcRdq1Oj69W/ArcGIS/rest/services/OpenData_RegulatoryActivity/FeatureServer/3"
     },
     {
@@ -80,17 +80,17 @@
       "count": 11300,
       "downloaded": 26980,
       "hash": "ff74f2d0859a",
-      "fetchedAt": "2026-11-10T00:30:33.818Z",
+      "fetchedAt": "2026-11-10T22:03:32.556Z",
       "source": "https://mapping.gw.govt.nz/arcgis/rest/services/GW/Resource_Consents_P/MapServer/0"
     },
     {
       "id": "MDC",
       "name": "Marlborough District Council",
       "file": "mdc.json",
-      "count": 45500,
-      "downloaded": 73633,
-      "hash": "f16110645301",
-      "fetchedAt": "2026-11-10T00:31:51.319Z",
+      "count": 45504,
+      "downloaded": 73637,
+      "hash": "faef4b5bddf6",
+      "fetchedAt": "2026-11-10T22:04:45.483Z",
       "source": "https://gis.marlborough.govt.nz/server/rest/services/OpenData/OpenData3/MapServer/5"
     },
     {
@@ -99,38 +99,38 @@
       "file": "wcrc.json",
       "count": 14192,
       "downloaded": 27195,
-      "hash": "458bd7206ffc",
-      "fetchedAt": "2026-11-10T00:32:16.380Z",
+      "hash": "0592c2afe2a1",
+      "fetchedAt": "2026-11-10T22:05:53.739Z",
       "source": "https://utility.arcgis.com/usrsvcs/servers/39c782f2da1442bda74406e716a5aa37/rest/services/Hosted/IRIS_Consents_and_Applications_External_Layer/FeatureServer/1"
     },
     {
       "id": "ECAN",
       "name": "Environment Canterbury",
       "file": "ecan.json",
-      "count": 55437,
-      "downloaded": 117223,
-      "hash": "c33600985e3e",
-      "fetchedAt": "2026-11-10T00:35:17.332Z",
+      "count": 55456,
+      "downloaded": 117243,
+      "hash": "1e8c4dcab263",
+      "fetchedAt": "2026-11-10T22:08:50.518Z",
       "source": "https://gis.ecan.govt.nz/arcgis/rest/services/Public/Resource_Consents/MapServer/45"
     },
     {
       "id": "ORC",
       "name": "Otago Regional Council",
       "file": "orc.json",
-      "count": 12892,
-      "downloaded": 25056,
-      "hash": "03131ad5a763",
-      "fetchedAt": "2026-11-10T00:35:28.634Z",
+      "count": 12897,
+      "downloaded": 25061,
+      "hash": "13934b8391ad",
+      "fetchedAt": "2026-11-10T22:09:06.374Z",
       "source": "https://maps.orc.govt.nz/arcgis/rest/services/ORCResourceConsents/MapServer/28"
     },
     {
       "id": "ES",
       "name": "Environment Southland",
       "file": "es.json",
-      "count": 5547,
-      "downloaded": 7799,
-      "hash": "13c6485eb694",
-      "fetchedAt": "2026-11-10T00:35:33.631Z",
+      "count": 5542,
+      "downloaded": 7794,
+      "hash": "93ca84e2a903",
+      "fetchedAt": "2026-11-10T22:09:11.274Z",
       "source": "https://maps.es.govt.nz/server/rest/services/Public/Consents/MapServer/2"
     }
   ]
